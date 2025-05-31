@@ -1,17 +1,17 @@
 const mysql = require('mysql2/promise');
 
 const pool = mysql.createPool({
-  host: process.env.DB_HOST,      // Ej: "containers-us-west-45.railway.app"
-  user: process.env.DB_USER,      // Ej: "root"
+  host: process.env.DB_HOST,      
+  user: process.env.DB_USER,      
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
-  port: process.env.DB_PORT,      // Ej: 6874
+  port: process.env.DB_PORT,    
   ssl: { rejectUnauthorized: false },
   connectTimeout: 10000,
   waitForConnections: true
 });
 
-// Prueba la conexión al iniciar (opcional)
+// Prueba la conexión al iniciar 
 async function testConnection() {
   try {
     const connection = await pool.getConnection();
