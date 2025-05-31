@@ -24,11 +24,10 @@ if (!process.env.JWT_SECRET || !process.env.DB_HOST) {
 
 // Middleware
 app.use(cors({
-  origin: process.env.CLIENT_URL ||'"https://task4-frontend.onrender.com"', // Frontend URL
+  origin: process.env.CLIENT_URL || 'https://task-4-web-aplication-1.onrender.com',
   credentials: true
 }));
 app.use(express.json());
-
 // Routes
 app.use('/api/users', userRoutes);
 app.use('/api/auth', authRoutes);
