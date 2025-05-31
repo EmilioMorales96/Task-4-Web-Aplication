@@ -86,3 +86,19 @@ function Login() {
 }
 
 export default Login;
+
+// Log the allowed CORS origin for debugging
+console.log('Allowed CORS origin:', process.env.CLIENT_URL);
+
+// Handle preflight requests for all routes
+app.options('*', cors({
+  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  credentials: true
+}));
+
+// Main CORS middleware
+app.use(cors({
+  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  credentials: true
+}));
+app.use(express.json());
