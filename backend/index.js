@@ -1,10 +1,15 @@
+// Load environment variables
+require('dotenv').config();
+
+// Import dependencies
 const express = require('express');
 const cors = require('cors');
-const db = require('./config/db');
+const db = require('./config/db'); // Your MySQL connection
 
+// Create Express app
 const app = express();
 
-// ✅ Configuración CORS completa (usa tu versión original)
+// ✅ CORS configuration 
 app.use(cors({
   origin: function (origin, callback) {
     const allowedOrigins = [
@@ -24,34 +29,39 @@ app.use(cors({
 
 app.use(express.json());
 
-// Test DB connection on startup
-async function testDbConnection() {
-  try {
-    const [rows] = await db.query('SELECT 1');
-    console.log('✅ DB connection successful');
-  } catch (err) {
-    console.error('❌ DB connection failed:', err.message);
-    process.exit(1);
-  }
+// ✅ Test DB connection on startup
+function testDbConnection() {
+  db.query('SELECT 1', (err) => {
+    if (err) {
+      console.error('❌ DB connection failed:', err.message);
+      process.exit(1);
+    } else {
+      console.log('✅ DB connection successful');
+    }
+  });
 }
 
 testDbConnection();
 
-// Routes
+// ✅ Routes
 app.use('/api/users', require('./routes/users'));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/admin', require('./routes/admin'));
 
+// Simple test route
 app.get('/', (req, res) => res.send('API is running.'));
 
-app.get('/test-db', async (req, res) => {
-  try {
-    const [rows] = await db.query('SELECT 1');
-    res.send('✅ DB Funciona');
-  } catch (err) {
-    res.status(500).send('❌ DB Error: ' + err.message);
-  }
+// DB health check endpoint
+app.get('/test-db', (req, res) => {
+  db.query('SELECT 1', (err) => {
+    if (err) {
+      res.status(500).send('❌ DB Error: ' + err.message);
+    } else {
+      res.send('✅ DB Funciona');
+    }
+  });
 });
 
+// Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
