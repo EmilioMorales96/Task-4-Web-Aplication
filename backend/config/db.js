@@ -1,5 +1,3 @@
-const mysql = require('mysql2/promise'); // Usa la versión con Promesas
-
 const mysql = require('mysql2/promise');
 
 const pool = mysql.createPool({
