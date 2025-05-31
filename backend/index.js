@@ -22,11 +22,20 @@ if (!process.env.JWT_SECRET || !process.env.DB_HOST) {
   process.exit(1);
 }
 
+
+// ✅ CORS configuration that works for both dev and production
 app.use(cors({
-  origin: [
-    "http://localhost:5173",
-    "https://task-4-web-aplication-1.onrender.com"
-  ],
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      "http://localhost:5173",
+      "https://task-4-web-aplication-1.onrender.com"
+    ];
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true,
   allowedHeaders: ["Content-Type", "Authorization"]
