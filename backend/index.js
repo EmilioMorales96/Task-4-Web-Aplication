@@ -24,7 +24,7 @@ if (!process.env.JWT_SECRET || !process.env.DB_HOST) {
 
 // Middleware
 app.use(cors({
-  origin: 'http://localhost:5173', // Frontend URL
+  origin: '"https://task4-frontend.onrender.com"', // Frontend URL
   credentials: true
 }));
 app.use(express.json());
@@ -57,8 +57,7 @@ app.use((err, req, res, next) => {
 });
 
 // Start the server
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server listening on port ${PORT}`);
+app.listen(process.env.PORT || 5000, () => {
+  console.log("Server is running");
 });
 
