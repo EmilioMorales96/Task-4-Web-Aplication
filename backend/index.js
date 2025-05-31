@@ -22,11 +22,16 @@ if (!process.env.JWT_SECRET || !process.env.DB_HOST) {
   process.exit(1);
 }
 
-// Middleware
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
-  credentials: true
+  origin: [
+    "http://localhost:5173",
+    "https://task-4-web-aplication-1.onrender.com"
+  ],
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true,
+  allowedHeaders: ["Content-Type", "Authorization"]
 }));
+
 app.use(express.json());
 
 // Routes
