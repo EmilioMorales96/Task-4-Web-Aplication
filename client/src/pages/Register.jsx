@@ -3,6 +3,8 @@ import { useNavigate, Link } from "react-router-dom";
 import axios from "axios";
 import logo from "../assets/itransition_logo.webp";
 import "../App.css";
+import.meta.env.VITE_API_URL;
+
 
 function Register() {
   const [name, setName] = useState("");
