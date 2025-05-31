@@ -1,24 +1,28 @@
-require('dotenv').config();
-const mysql = require('mysql2/promise');
+const mysql = require('mysql2/promise'); // Usa la versión con Promesas
 
-const connection = mysql.createConnection({
- host: process.env.DB_HOST,
+const pool = mysql.createPool({
+  host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   port: process.env.DB_PORT,
-  ssl: { rejectUnauthorized: false }, // ¡Esto es obligatorio en Railway!
+  ssl: { rejectUnauthorized: false }, // Obligatorio en Railway
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
 });
 
-connection.connect((err) => {
-  if (err) {
-    console.error('❌ Error al conectar a la base de datos:', err);
-  } else {
-    console.log('✅ Conexión a la base de datos establecida');
+// Prueba la conexión al iniciar (opcional)
+async function testConnection() {
+  try {
+    const connection = await pool.getConnection();
+    console.log('✅ Conexión exitosa a MySQL');
+    connection.release();
+  } catch (err) {
+    console.error('❌ Error al conectar a MySQL:', err.message);
   }
-});
+}
 
-module.exports = connection;
+testConnection();
+
+module.exports = pool;
