@@ -1,9 +1,8 @@
 import { useState } from "react";
-import { useNavigate, Link} from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import logo from "../assets/itransition_logo.webp";
 import "../App.css";
-
 // Importing necessary libraries and assets
 function Login() {
   const [email, setEmail] = useState("");
@@ -18,7 +17,7 @@ function Login() {
     setStatus("");
     try {
       const res = await axios.post(
-        `${import.meta.env.VITE_API_URL || "https://task-4-web-aplication-1.onrender.com"}/api/auth/login`,
+        `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/auth/login`,
         { email, password }
       );
       localStorage.setItem("token", res.data.token);
@@ -75,9 +74,9 @@ function Login() {
           <button type="submit" className="login-btn" disabled={loading}>
             {loading ? "Signing In..." : "Sign In"}
           </button>
-         <div className="login-signup">
-           Don&apos;t have an account? <Link to="/register">Sign up</Link>
-         </div>
+          <div className="login-signup">
+          Don&apos;t have an account? <a href="/register">Sign up</a>
+          </div>
         </form>
       </div>
       <div className="login-right" />
@@ -86,19 +85,3 @@ function Login() {
 }
 
 export default Login;
-
-// Log the allowed CORS origin for debugging
-console.log('Allowed CORS origin:', process.env.CLIENT_URL);
-
-// Handle preflight requests for all routes
-app.options('*', cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
-  credentials: true
-}));
-
-// Main CORS middleware
-app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
-  credentials: true
-}));
-app.use(express.json());
