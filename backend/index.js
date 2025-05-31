@@ -25,6 +25,7 @@ if (!process.env.JWT_SECRET || !process.env.DB_HOST) {
 // Middleware
 app.use(cors({
   origin: process.env.CLIENT_URL || "https://task-4-web-aplication-1.onrender.com",
+  methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
 }));
 app.use(express.json());
