@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import logo from "../assets/itransition_logo.webp";
 import "../App.css";
+import { Link } from "react-router-dom";
+
 // Importing necessary libraries and assets
 function Login() {
   const [email, setEmail] = useState("");
@@ -75,7 +77,7 @@ function Login() {
             {loading ? "Signing In..." : "Sign In"}
           </button>
           <div className="login-signup">
-          Don&apos;t have an account? <a href="/register">Sign up</a>
+          Don&apos;t have an account? <Link to="/register">Sign In</Link>
           </div>
         </form>
       </div>
