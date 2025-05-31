@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import axios from "axios";
 import logo from "../assets/itransition_logo.webp";
 import "../App.css";
@@ -74,9 +74,9 @@ function Login() {
           <button type="submit" className="login-btn" disabled={loading}>
             {loading ? "Signing In..." : "Sign In"}
           </button>
-          <div className="login-signup">
-          Don&apos;t have an account? <a href="/register">Sign up</a>
-          </div>
+         <div className="login-signup">
+          Don&apos;t have an account? <Link to="/register">Sign up</Link>
+         </div>
         </form>
       </div>
       <div className="login-right" />
