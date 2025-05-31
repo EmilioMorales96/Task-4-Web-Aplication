@@ -23,7 +23,9 @@ if (!process.env.JWT_SECRET || !process.env.DB_HOST) {
 }
 
 // Middleware
+console.log('Starting backend...');
 console.log('Allowed CORS origin:', process.env.CLIENT_URL);
+console.log('DB Host:', process.env.DB_HOST);
 
 // Explicitly handle preflight requests for all routes
 app.options('*', cors({
