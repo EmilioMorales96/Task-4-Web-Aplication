@@ -13,6 +13,10 @@ const db = require('./config/db');
 const userRoutes = require('./routes/users');
 const authRoutes = require('./routes/auth');
 const adminRoutes = require("./routes/admin");
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://task-4-web-aplication-1.onrender.com"
+];
 
 const app = express();
 
@@ -24,7 +28,13 @@ if (!process.env.JWT_SECRET || !process.env.DB_HOST) {
 
 // Middleware
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'https://task-4-web-aplication-1.onrender.com',
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
 }));
