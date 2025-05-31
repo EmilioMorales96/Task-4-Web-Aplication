@@ -1,79 +1,43 @@
-// Load environment variables from .env file
-require('dotenv').config();
-
-// Import required modules
 const express = require('express');
 const cors = require('cors');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-
-
-// Import custom modules
-const db = require('./config/db');
-const userRoutes = require('./routes/users');
-const authRoutes = require('./routes/auth');
-const adminRoutes = require("./routes/admin");
+const db = require('./config/db'); // Asegúrate de que exporte el pool
 
 const app = express();
 
-// Check required environment variables
-if (!process.env.JWT_SECRET || !process.env.DB_HOST) {
-  console.error('❌ Missing environment variables.');
-  process.exit(1);
-}
-
-
-// ✅ CORS configuration that works for both dev and production
-app.use(cors({
-  origin: function (origin, callback) {
-    const allowedOrigins = [
-      "http://localhost:5173",
-      "https://task-4-web-aplication-1.onrender.com"
-    ];
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  credentials: true,
-  allowedHeaders: ["Content-Type", "Authorization"]
-}));
+// ✅ CORS config (igual que antes)
+app.use(cors({ ... }));
 
 app.use(express.json());
 
 // Routes
-app.use('/api/users', userRoutes);
-app.use('/api/auth', authRoutes);
-app.use("/api/admin", adminRoutes);
+app.use('/api/users', require('./routes/users'));
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/admin', require('./routes/admin'));
 
-// Test route
-app.get('/', (req, res) => {
-  res.send('API is running.');
-});
+// Test DB connection on startup
+async function testDbConnection() {
+  try {
+    const [rows] = await db.query('SELECT 1');
+    console.log('✅ DB connection successful');
+  } catch (err) {
+    console.error('❌ DB connection failed:', err.message);
+    process.exit(1);
+  }
+}
 
-// Test DB connection route
+testDbConnection();
+
+// Routes
+app.get('/', (req, res) => res.send('API is running.'));
 app.get('/test-db', async (req, res) => {
   try {
-    await db.query('SELECT 1');
+    const [rows] = await db.query('SELECT 1');
     res.send('✅ DB Connected');
   } catch (err) {
-    console.error(err);
     res.status(500).send('❌ DB Connection Failed');
   }
 });
 
-// Centralized error handler
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ message: 'Internal Server Error' });
-});
-
-// Start the server
+// Start server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server listening on port ${PORT}`);
-});
-
-
+app.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
