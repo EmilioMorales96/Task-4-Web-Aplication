@@ -47,9 +47,9 @@ app.get('/', (req, res) => res.send('API is running.'));
 app.get('/test-db', async (req, res) => {
   try {
     const [rows] = await db.query('SELECT 1');
-    res.send('✅ DB Connected');
+    res.send('✅ DB Funciona');
   } catch (err) {
-    res.status(500).send('❌ DB Connection Failed');
+    res.status(500).send('❌ DB Error: ' + err.message);
   }
 });
 
