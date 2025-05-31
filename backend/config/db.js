@@ -1,25 +1,19 @@
-const mysql = require('mysql2/promise'); 
+const mysql = require('mysql2');
 
-const pool = mysql.createPool({
-  host: process.env.MYSQLHOST,     
-  user: process.env.MYSQLUSER,
-  password: process.env.MYSQLPASSWORD,
-  database: process.env.MYSQLDATABASE,
-  port: process.env.MYSQLPORT,      
-  ssl: { rejectUnauthorized: false }, 
-  waitForConnections: true,
-  connectTimeout: 10000, 
-  connectionLimit: 10
+const db = mysql.createConnection({
+  host: process.env.DB_HOST,     // ✅ usa DB_ en lugar de MYSQL_
+  port: process.env.DB_PORT,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
 });
 
+db.connect((err) => {
+  if (err) {
+    console.error('❌ Database connection failed:', err.message);
+  } else {
+    console.log('✅ Connected to MySQL database!');
+  }
+});
 
-pool.getConnection()
-  .then(conn => {
-    console.log('✅ Conectado a MySQL en Railway!');
-    conn.release();
-  })
-  .catch(err => {
-    console.error('❌ Error de conexión:', err.message);
-  });
-
-module.exports = pool;
+module.exports = db;
