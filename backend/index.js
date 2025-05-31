@@ -19,6 +19,10 @@ const allowedOrigins = [
 ];
 
 const app = express();
+app.use(cors({ ... })); 
+app.use(express.json());
+app.use("/api", routes); 
+
 
 // Check required environment variables
 if (!process.env.JWT_SECRET || !process.env.DB_HOST) {
@@ -28,17 +32,14 @@ if (!process.env.JWT_SECRET || !process.env.DB_HOST) {
 
 // Middleware
 app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
+  origin: [
+    "http://localhost:5173",
+    "https://task-4-web-aplication-1.onrender.com"
+  ],
   methods: ["GET", "POST", "PUT", "DELETE"],
-  credentials: true
+  credentials: true,
+  allowedHeaders: ["Content-Type", "Authorization"]
 }));
-app.use(express.json());
 // Routes
 app.use('/api/users', userRoutes);
 app.use('/api/auth', authRoutes);
