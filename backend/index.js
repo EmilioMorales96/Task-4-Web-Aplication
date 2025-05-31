@@ -23,6 +23,8 @@ if (!process.env.JWT_SECRET || !process.env.DB_HOST) {
 }
 
 // Middleware
+console.log('Allowed CORS origin:', process.env.CLIENT_URL);
+
 app.use(cors({
   origin: process.env.CLIENT_URL || 'http://localhost:5173',
   credentials: true
