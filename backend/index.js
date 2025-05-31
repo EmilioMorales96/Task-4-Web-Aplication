@@ -1,116 +1,65 @@
-import { useState } from "react";
-import { useNavigate, Link} from "react-router-dom";
-import axios from "axios";
-import logo from "../assets/itransition_logo.webp";
-import "../App.css";
+// Load environment variables from .env file
+require('dotenv').config();
 
-// Importing necessary libraries and assets
-function Login() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [status, setStatus] = useState("");
-  const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
-// Using useNavigate hook for navigation
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setStatus("");
-    try {
-      const res = await axios.post(
-        `${import.meta.env.VITE_API_URL || "https://task-4-web-aplication-1.onrender.com"}/api/auth/login`,
-        { email, password }
-      );
-      localStorage.setItem("token", res.data.token);
-      setStatus("✅ Login successful!");
-      setTimeout(() => navigate("/dashboard"), 1000);
-    } catch (err) {
-      console.error(err);
-      setStatus("❌ Login failed. Please check your credentials.");
-    } finally {
-      setLoading(false);
-    }
-  };
-// Handling form submission and API request for login
-  return (
-    <div className="login-split-bg">
-      <div className="login-left">
-        <div className="login-logo-large">
-          <img src={logo} alt="Logo" className="login-logo-img-large" />
-        </div>
-        <form className="login-form-large" onSubmit={handleSubmit}>
-          <h2 className="login-title-large">Sign in to The App</h2>
-          {status && (
-            <p className={`login-status ${status.startsWith("✅") ? "success" : "error"}`}>
-              {status}
-            </p>
-          )}
-          <div className="login-field">
-            <label htmlFor="email">Email</label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              required
-              onChange={(e) => setEmail(e.target.value)}
-              className="login-input"
-              autoComplete="username"
-            />
-          </div>
-          <div className="login-field">
-            <label htmlFor="password">Password</label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              required
-              onChange={(e) => setPassword(e.target.value)}
-              className="login-input"
-              autoComplete="current-password"
-            />
-          </div>
-          <div className="login-forgot">
-            <a href="#">Forgot password?</a>
-          </div>
-          <button type="submit" className="login-btn" disabled={loading}>
-            {loading ? "Signing In..." : "Sign In"}
-          </button>
-         <div className="login-signup">
-           Don&apos;t have an account? <Link to="/register">Sign up</Link>
-         </div>
-        </form>
-      </div>
-      <div className="login-right" />
-    </div>
-  );
-}
+// Import required modules
+const express = require('express');
+const cors = require('cors');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 
-export default Login;
 
-import express from "express";
-import cors from "cors";
+// Import custom modules
+const db = require('./config/db');
+const userRoutes = require('./routes/users');
+const authRoutes = require('./routes/auth');
+const adminRoutes = require("./routes/admin");
 
 const app = express();
 
-// Log the allowed CORS origin for debugging
-console.log('Allowed CORS origin:', process.env.CLIENT_URL);
+// Check required environment variables
+if (!process.env.JWT_SECRET || !process.env.DB_HOST) {
+  console.error('❌ Missing environment variables.');
+  process.exit(1);
+}
 
-// Handle preflight requests for all routes
-app.options('*', cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
-  credentials: true
-}));
-
-// Main CORS middleware
+// Middleware
 app.use(cors({
   origin: process.env.CLIENT_URL || 'http://localhost:5173',
   credentials: true
 }));
 app.use(express.json());
 
-// ...your backend routes here...
+// Routes
+app.use('/api/users', userRoutes);
+app.use('/api/auth', authRoutes);
+app.use("/api/admin", adminRoutes);
 
+// Test route
+app.get('/', (req, res) => {
+  res.send('API is running.');
+});
+
+// Test DB connection route
+app.get('/test-db', async (req, res) => {
+  try {
+    await db.query('SELECT 1');
+    res.send('✅ DB Connected');
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('❌ DB Connection Failed');
+  }
+});
+
+// Centralized error handler
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ message: 'Internal Server Error' });
+});
+
+// Start the server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`🚀 Server listening on port ${PORT}`);
 });
+
+
