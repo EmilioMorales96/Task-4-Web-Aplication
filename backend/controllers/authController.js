@@ -1,95 +1,69 @@
-// POST /register 
-router.post('/register', async (req, res) => {
-  try {
-    const { name, email, password } = req.body;
-    
-    // Validación 
-    if (!name || !email || !password) {
-      return res.status(400).json({ error: 'All fields required' });
-    }
-
-    const [existing] = await db.query(
-      "SELECT id FROM users WHERE email = ?", 
-      [email]
-    );
-    
-    if (existing.length > 0) {
-      return res.status(409).json({ error: 'Email already exists' });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const role = email.endsWith('@admin.com') ? 'admin' : 'user'; // Auto-rol
-    
-    await db.query(
-      `INSERT INTO users 
-      (name, email, password, status, role) 
-      VALUES (?, ?, ?, 'active', ?)`,
-      [name, email, hashedPassword, role]
-    );
-    
-    res.status(201).json({ message: 'User registered' });
-  } catch (error) {
-    res.status(500).json({ error: 'Registration failed' });
-  }
-});
-
-// POST /login (mejorado)
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
   
   try {
-    // Verificación de intentos
-    const [attemptRows] = await db.query(
-      "SELECT * FROM login_attempts WHERE email = ?",
+    // 1. Verificar intentos previos
+    const [attempt] = await db.query(
+      `SELECT * FROM login_attempts 
+       WHERE email = ? AND blocked_until > NOW()`, 
       [email]
     );
-    
-    const attempt = attemptRows[0];
-    if (attempt?.blocked_until > new Date()) {
+
+    if (attempt) {
       return res.status(403).json({
-        error: "Account temporarily locked"
+        error: `Cuenta bloqueada temporalmente. Intenta después de ${new Date(attempt.blocked_until).toLocaleTimeString()}`
       });
     }
 
-    // Buscar usuario
-    const [userRows] = await db.query(
-      "SELECT * FROM users WHERE email = ?",
+    // 2. Buscar usuario
+    const [user] = await db.query(
+      `SELECT * FROM users 
+       WHERE email = ? AND status = 'active'`, 
       [email]
     );
-    
-    const user = userRows[0];
-    if (!user || user.status !== 'active') {
-      return res.status(401).json({ error: "Invalid credentials" });
+
+    if (!user) {
+      return res.status(401).json({ 
+        error: "Credenciales inválidas o cuenta inactiva" 
+      });
     }
 
-    // Validar contraseña
-    const isValid = await bcrypt.compare(password, user.password);
-    if (!isValid) {
-      // Lógica de intentos fallidos...
-      return res.status(401).json({ error: "Invalid credentials" });
+    // 3. Verificar contraseña
+    const validPassword = await bcrypt.compare(password, user.password);
+    if (!validPassword) {
+      // Registrar intento fallido
+      await db.query(
+        `INSERT INTO login_attempts (email, attempts) 
+         VALUES (?, 1) 
+         ON DUPLICATE KEY UPDATE 
+         attempts = attempts + 1, 
+         last_attempt = NOW(),
+         blocked_until = IF(attempts >= 3, DATE_ADD(NOW(), INTERVAL 15 MINUTE), NULL)`,
+        [email]
+      );
+      
+      return res.status(401).json({ error: "Credenciales inválidas" });
     }
 
-    // Resetear intentos
-    await db.query("DELETE FROM login_attempts WHERE email = ?", [email]);
+    // 4. Login exitoso - Resetear intentos
+    await db.query(`DELETE FROM login_attempts WHERE email = ?`, [email]);
 
-    // Generar token con rol
+    // 5. Generar token
     const token = jwt.sign(
-      { 
-        id: user.id, 
-        email: user.email, 
-        role: user.role  // Incluir rol
+      {
+        id: user.id,
+        email: user.email,
+        role: user.role
       },
       process.env.JWT_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: "2h" }
     );
-    
-    // Actualizar último login
-    await db.query(
-      "UPDATE users SET last_login = NOW() WHERE id = ?",
-      [user.id]
-    );
-    
-    res.json({ 
+
+    // 6. Actualizar último login
+    await db.query(`UPDATE users SET last_login = NOW() WHERE id = ?`, [user.id]);
+
+    // 7. Responder con datos seguros
+    res.json({
       token,
       user: {
         id: user.id,
@@ -98,7 +72,9 @@ router.post("/login", async (req, res) => {
         role: user.role
       }
     });
-  } catch (err) {
-    res.status(500).json({ error: "Login failed" });
+
+  } catch (error) {
+    console.error("Error en login:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 });
