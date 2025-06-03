@@ -9,19 +9,36 @@ const jwt = require("jsonwebtoken");
 router.post('/register', async (req, res) => {
   try {
     const { name, email, password } = req.body;
+    
+    // Validation
     if (!name || !email || !password) {
-      return res.status(400).json({ error: 'All fields are required.' });
+      return res.status(400).json({ error: 'All fields required' });
     }
+
+    const [existing] = await db.query(
+      "SELECT id FROM users WHERE email = ?", 
+      [email]
+    );
+    
+    if (existing.length > 0) {
+      return res.status(409).json({ error: 'Email already exists' });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
-    const sql = 'INSERT INTO users (name, email, password, status, last_login) VALUES (?, ?, ?, ?, ?)';
-    const values = [name, email, hashedPassword, 'active', new Date()];
-    await db.query(sql, values);
-    res.status(201).json({ message: 'User registered successfully.' });
+    const role = email.endsWith('@admin.com') ? 'admin' : 'user'; 
+    
+    await db.query(
+      `INSERT INTO users 
+      (name, email, password, status, role) 
+      VALUES (?, ?, ?, 'active', ?)`,
+      [name, email, hashedPassword, role]
+    );
+    
+    res.status(201).json({ message: 'User registered' });
   } catch (error) {
-    res.status(500).json({ error: 'Registration failed.' });
+    res.status(500).json({ error: 'Registration failed' });
   }
 });
-
 // POST /login
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
@@ -70,7 +87,7 @@ router.post("/login", async (req, res) => {
     ]);
     // Generate JWT token
     const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role }, // <-- role must be "admin" for admins
+      { id: user.id, email: user.email, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );
