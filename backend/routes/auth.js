@@ -3,6 +3,8 @@ const router = express.Router();
 const bcrypt = require("bcryptjs");
 const db = require('../config/db'); 
 const jwt = require("jsonwebtoken");
+const mysql = require('mysql2/promise');
+
 
 // POST /register
 router.post('/register', async (req, res) => {
