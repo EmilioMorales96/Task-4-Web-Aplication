@@ -41,9 +41,6 @@ async function testDbConnection() {
   }
 }
 
-  });
-}
-
 testDbConnection();
 
 // ✅ Routes
