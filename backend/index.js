@@ -4,7 +4,7 @@ require('dotenv').config();
 // Import dependencies
 const express = require('express');
 const cors = require('cors');
-const db = require('./config/db'); // Your MySQL connection
+const db = require('./config/db');
 
 // Create Express app
 const app = express();
@@ -25,20 +25,22 @@ app.use(cors({
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true,
   allowedHeaders: ["Content-Type", "Authorization"],
-  optionsSuccessStatus: 200 // ✅ Fix for legacy browsers/Render preflight
+  optionsSuccessStatus: 200 
 }));
 
 app.use(express.json());
 
 // ✅ Test DB connection on startup
-function testDbConnection() {
-  db.query('SELECT 1', (err) => {
-    if (err) {
-      console.error('❌ DB connection failed:', err.message);
-      process.exit(1);
-    } else {
-      console.log('✅ DB connection successful');
-    }
+async function testDbConnection() {
+  try {
+    await db.query('SELECT 1');
+    console.log('✅ DB connection successful');
+  } catch (err) {
+    console.error('❌ DB connection failed:', err.message);
+    process.exit(1);
+  }
+}
+
   });
 }
 
