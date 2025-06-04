@@ -33,25 +33,20 @@ function AdminPanel() {
         navigate("/login");
         return;
       }
-
       const res = await axios.get(
         `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/admin/users`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      // Validación defensiva
-      if (!res.data || !Array.isArray(res.data.users)) {
-        throw new Error("Invalid user data from server");
-      }
-
-      setUsers(res.data.users);
+      // Aquí recibimos un arreglo directamente, no un objeto con 'users'
+      setUsers(res.data); 
     } catch (err) {
-      if (err.response?.status === 401) {
+      if (err.response && err.response.status === 401) {
         localStorage.removeItem("token");
         navigate("/login");
       } else {
         setError("Failed to fetch users.");
-        console.error("Fetch error:", err);
+        console.error("Failed to fetch users:", err);
       }
     } finally {
       setLoading(false);
@@ -60,6 +55,7 @@ function AdminPanel() {
 
   useEffect(() => {
     fetchUsers();
+    // eslint-disable-next-line
   }, []);
 
   const handleSelectAll = (e) => {
@@ -76,29 +72,25 @@ function AdminPanel() {
     try {
       setError("");
       const token = localStorage.getItem("token");
-
       await axios.post(
         `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/admin/${action}`,
         { ids: selectedUsers },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-
       fetchUsers();
       setSelectedUsers([]);
     } catch (err) {
       setError(`Failed to ${action} users.`);
-      console.error(`Error in ${action}:`, err);
+      console.error(`Failed to ${action} users:`, err);
     }
   };
 
-  const filteredUsers = users.filter((u) => {
-    const name = u.name || "";
-    const email = u.email || "";
-    return (
-      name.toLowerCase().includes(filter.toLowerCase()) ||
-      email.toLowerCase().includes(filter.toLowerCase())
-    );
-  });
+  // Filtramos los usuarios
+  const filteredUsers = users.filter(
+    (u) =>
+      u.name.toLowerCase().includes(filter.toLowerCase()) ||
+      u.email.toLowerCase().includes(filter.toLowerCase())
+  );
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -121,13 +113,11 @@ function AdminPanel() {
           Logout
         </button>
       </div>
-
       {error && (
         <p className="login-status error" aria-live="polite">
           {error}
         </p>
       )}
-
       {loading ? (
         <p>Loading users...</p>
       ) : (
@@ -175,7 +165,6 @@ function AdminPanel() {
               onChange={(e) => setFilter(e.target.value)}
             />
           </div>
-
           <div className="dashboard-table-responsive">
             <TableContainer component={Paper}>
               <Table>
@@ -184,8 +173,7 @@ function AdminPanel() {
                     <TableCell padding="checkbox">
                       <Checkbox
                         checked={
-                          selectedUsers.length === users.length &&
-                          users.length > 0
+                          selectedUsers.length === users.length && users.length > 0
                         }
                         indeterminate={
                           selectedUsers.length > 0 &&
@@ -200,67 +188,71 @@ function AdminPanel() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filteredUsers.map((user) => (
-                    <TableRow
-                      key={user.id}
-                      hover
-                      selected={selectedUsers.includes(user.id)}
-                      sx={{
-                        backgroundColor: selectedUsers.includes(user.id)
-                          ? "#e3f2fd"
-                          : user.blocked
-                          ? "#f5f5f5"
-                          : "inherit",
-                        textDecoration: user.blocked ? "line-through" : "none",
-                        color: user.blocked ? "#bbb" : "inherit",
-                      }}
-                    >
-                      <TableCell padding="checkbox">
-                        <Checkbox
-                          checked={selectedUsers.includes(user.id)}
-                          onChange={() => handleSelect(user.id)}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <span
-                          style={{
-                            textDecoration: user.blocked ? "line-through" : "none",
-                            color: user.blocked ? "#888" : "inherit",
-                            fontWeight: 600,
-                          }}
-                        >
-                          {user.name || "N/A"}
-                        </span>
-                        <div
-                          style={{
-                            fontSize: 13,
-                            color: user.blocked ? "#bbb" : "#666",
-                            textDecoration: user.blocked ? "line-through" : "none",
-                          }}
-                        >
-                          {user.role || user.company || "N/A"}
-                        </div>
-                      </TableCell>
-                      <TableCell>{user.email || "N/A"}</TableCell>
-                      <TableCell>
-                        <Tooltip
-                          title={
-                            user.last_seen
-                              ? format(new Date(user.last_seen), "yyyy-MM-dd HH:mm:ss")
-                              : "N/A"
-                          }
-                        >
-                          <span>
-                            {user.last_seen
-                              ? formatDistanceToNow(new Date(user.last_seen), {
-                                  addSuffix: true,
-                                })
-                              : "N/A"}
+                  {filteredUsers.map((user) => {
+                    const isBlocked = user.status === "blocked";
+                    const lastSeen = user.last_login;
+                    return (
+                      <TableRow
+                        key={user.id}
+                        hover
+                        selected={selectedUsers.includes(user.id)}
+                        sx={{
+                          backgroundColor: selectedUsers.includes(user.id)
+                            ? "#e3f2fd"
+                            : isBlocked
+                            ? "#f5f5f5"
+                            : "inherit",
+                          textDecoration: isBlocked ? "line-through" : "none",
+                          color: isBlocked ? "#bbb" : "inherit",
+                        }}
+                      >
+                        <TableCell padding="checkbox">
+                          <Checkbox
+                            checked={selectedUsers.includes(user.id)}
+                            onChange={() => handleSelect(user.id)}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <span
+                            style={{
+                              textDecoration: isBlocked ? "line-through" : "none",
+                              color: isBlocked ? "#888" : "inherit",
+                              fontWeight: 600,
+                            }}
+                          >
+                            {user.name}
                           </span>
-                        </Tooltip>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                          <div
+                            style={{
+                              fontSize: 13,
+                              color: isBlocked ? "#bbb" : "#666",
+                              textDecoration: isBlocked ? "line-through" : "none",
+                            }}
+                          >
+                            {user.role || user.company || "N/A"}
+                          </div>
+                        </TableCell>
+                        <TableCell>{user.email}</TableCell>
+                        <TableCell>
+                          <Tooltip
+                            title={
+                              lastSeen
+                                ? format(new Date(lastSeen), "yyyy-MM-dd HH:mm:ss")
+                                : "N/A"
+                            }
+                          >
+                            <span>
+                              {lastSeen
+                                ? formatDistanceToNow(new Date(lastSeen), {
+                                    addSuffix: true,
+                                  })
+                                : "N/A"}
+                            </span>
+                          </Tooltip>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </TableContainer>
@@ -272,4 +264,3 @@ function AdminPanel() {
 }
 
 export default AdminPanel;
-
