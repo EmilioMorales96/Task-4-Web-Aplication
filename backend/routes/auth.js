@@ -6,11 +6,11 @@ const jwt = require("jsonwebtoken");
 
 
 // POST /register
+// POST /register
 router.post('/register', async (req, res) => {
   try {
     const { name, email, password } = req.body;
-    
-    // Validation
+
     if (!name || !email || !password) {
       return res.status(400).json({ error: 'All fields required' });
     }
@@ -19,26 +19,28 @@ router.post('/register', async (req, res) => {
       "SELECT id FROM users WHERE email = ?", 
       [email]
     );
-    
+
     if (existing.length > 0) {
       return res.status(409).json({ error: 'Email already exists' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const role = email.endsWith('@admin.com') ? 'admin' : 'user'; 
-    
+    const role = 'admin'; 
+
     await db.query(
       `INSERT INTO users 
       (name, email, password, status, role) 
       VALUES (?, ?, ?, 'active', ?)`,
       [name, email, hashedPassword, role]
     );
-    
+
     res.status(201).json({ message: 'User registered' });
   } catch (error) {
+    console.error('🔥 Registration error:', error);
     res.status(500).json({ error: 'Registration failed' });
   }
 });
+
 // POST /login
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
