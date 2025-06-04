@@ -34,7 +34,7 @@ function AdminPanel() {
         return;
       }
       const res = await axios.get(
-        `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/admin/users,
+        `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/admin/users`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setUsers(res.data.users);
@@ -52,33 +52,10 @@ function AdminPanel() {
     }
   };
 // Fetching users from the API when the component mounts
-  const fetchUsers = async () => {
-  try {
-    setLoading(true);
-    const token = localStorage.getItem("token");
-    const res = await axios.get(
-      `${import.meta.env.VITE_API_URL}/api/users`,
-      {
-        headers: { 
-          Authorization: `Bearer ${token}`,
-          'Cache-Control': 'no-cache' 
-        }
-      }
-    );
-    setUsers(res.data || []); 
-    
-    console.log("Datos recibidos:", res.data); 
-  } catch (err) {
-    console.error("Error completo:", err.response); 
-    if (err.response?.status === 401) {
-      navigate("/login");
-    } else {
-      setError(`Error: ${err.response?.data?.message || err.message}`);
-    }
-  } finally {
-    setLoading(false);
-  }
-};
+  useEffect(() => {
+    fetchUsers();
+    // eslint-disable-next-line
+  }, []);
 
   const handleSelectAll = (e) => {
     setSelectedUsers(e.target.checked ? users.map((u) => u.id) : []);
