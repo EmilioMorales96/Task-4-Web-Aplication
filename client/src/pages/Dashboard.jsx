@@ -15,7 +15,7 @@ import {
   Paper,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-// Importing necessary components and libraries
+
 function AdminPanel() {
   const [users, setUsers] = useState([]);
   const [selectedUsers, setSelectedUsers] = useState([]);
@@ -23,7 +23,7 @@ function AdminPanel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const navigate = useNavigate();
-// Using useNavigate hook for navigation
+
   const fetchUsers = async () => {
     try {
       setLoading(true);
@@ -33,28 +33,33 @@ function AdminPanel() {
         navigate("/login");
         return;
       }
+
       const res = await axios.get(
         `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/admin/users`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
+
+      // Validación defensiva
+      if (!res.data || !Array.isArray(res.data.users)) {
+        throw new Error("Invalid user data from server");
+      }
+
       setUsers(res.data.users);
     } catch (err) {
-      if (err.response && err.response.status === 401) {
-        // Token invalid or expired, force logout
+      if (err.response?.status === 401) {
         localStorage.removeItem("token");
         navigate("/login");
       } else {
         setError("Failed to fetch users.");
-        console.error("Failed to fetch users:", err);
+        console.error("Fetch error:", err);
       }
     } finally {
       setLoading(false);
     }
   };
-// Fetching users from the API when the component mounts
+
   useEffect(() => {
     fetchUsers();
-    // eslint-disable-next-line
   }, []);
 
   const handleSelectAll = (e) => {
@@ -66,29 +71,34 @@ function AdminPanel() {
       prev.includes(id) ? prev.filter((uid) => uid !== id) : [...prev, id]
     );
   };
-// Handling selection of users for actions
+
   const performAction = async (action) => {
     try {
       setError("");
       const token = localStorage.getItem("token");
+
       await axios.post(
         `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/admin/${action}`,
-        { ids: selectedUsers }, // <-- FIXED: was userIds
+        { ids: selectedUsers },
         { headers: { Authorization: `Bearer ${token}` } }
       );
+
       fetchUsers();
       setSelectedUsers([]);
     } catch (err) {
       setError(`Failed to ${action} users.`);
-      console.error(`Failed to ${action} users:`, err);
+      console.error(`Error in ${action}:`, err);
     }
   };
-// Performing actions like block, unblock, or delete on selected users
-  const filteredUsers = users.filter(
-    (u) =>
-      u.name.toLowerCase().includes(filter.toLowerCase()) ||
-      u.email.toLowerCase().includes(filter.toLowerCase())
-  );
+
+  const filteredUsers = users.filter((u) => {
+    const name = u.name || "";
+    const email = u.email || "";
+    return (
+      name.toLowerCase().includes(filter.toLowerCase()) ||
+      email.toLowerCase().includes(filter.toLowerCase())
+    );
+  });
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -111,11 +121,13 @@ function AdminPanel() {
           Logout
         </button>
       </div>
+
       {error && (
         <p className="login-status error" aria-live="polite">
           {error}
         </p>
       )}
+
       {loading ? (
         <p>Loading users...</p>
       ) : (
@@ -163,6 +175,7 @@ function AdminPanel() {
               onChange={(e) => setFilter(e.target.value)}
             />
           </div>
+
           <div className="dashboard-table-responsive">
             <TableContainer component={Paper}>
               <Table>
@@ -216,7 +229,7 @@ function AdminPanel() {
                             fontWeight: 600,
                           }}
                         >
-                          {user.name}
+                          {user.name || "N/A"}
                         </span>
                         <div
                           style={{
@@ -228,7 +241,7 @@ function AdminPanel() {
                           {user.role || user.company || "N/A"}
                         </div>
                       </TableCell>
-                      <TableCell>{user.email}</TableCell>
+                      <TableCell>{user.email || "N/A"}</TableCell>
                       <TableCell>
                         <Tooltip
                           title={
@@ -259,3 +272,4 @@ function AdminPanel() {
 }
 
 export default AdminPanel;
+
