@@ -1,10 +1,10 @@
 const express = require("express");
 const router = express.Router();
 const db = require('../config/db');
-const { verifyToken, isAdmin } = require("../middleware/authMiddleware");
+const { verifyToken } = require("../middleware/authMiddleware"); 
 
 // Get all users 
-router.get("/users", verifyToken, isAdmin, async (req, res) => {
+router.get("/users", verifyToken, async (req, res) => {
   try {
     const [results] = await db.query(`
       SELECT id, name, email, role, status, last_login 
@@ -18,7 +18,7 @@ router.get("/users", verifyToken, isAdmin, async (req, res) => {
 });
 
 // Block users 
-router.post("/block", verifyToken, isAdmin, async (req, res) => {
+router.post("/block", verifyToken, async (req, res) => {
   const ids = req.body.ids;
   
   if (!Array.isArray(ids)) {
@@ -26,13 +26,10 @@ router.post("/block", verifyToken, isAdmin, async (req, res) => {
   }
 
   try {
-    // Prevent blocking other admins
     await db.query(`
       UPDATE users 
       SET status = 'blocked' 
-      WHERE id IN (?) 
-      AND role = 'user'`, [ids]);
-    
+      WHERE id IN (?)`, [ids]); 
     res.json({ message: "Users blocked successfully" });
   } catch (err) {
     res.status(500).json({ message: "Blocking failed" });
@@ -40,13 +37,13 @@ router.post("/block", verifyToken, isAdmin, async (req, res) => {
 });
 
 // Unblock users
-router.post("/unblock", verifyToken, isAdmin, async (req, res) => {
+router.post("/unblock", verifyToken, async (req, res) => {
   const ids = req.body.ids;
   if (!Array.isArray(ids) || ids.length === 0) {
     return res.status(400).json({ message: "Invalid user IDs." });
   }
   try {
-    await db.query("UPDATE users SET blocked = 0 WHERE id IN (?)", [ids]);
+    await db.query("UPDATE users SET status = 'active' WHERE id IN (?)", [ids]);
     res.json({ message: "Users unblocked successfully." });
   } catch (err) {
     res.status(500).json({ message: "Failed to unblock users." });
@@ -54,7 +51,7 @@ router.post("/unblock", verifyToken, isAdmin, async (req, res) => {
 });
 
 // Delete users
-router.post("/delete", verifyToken, isAdmin, async (req, res) => {
+router.post("/delete", verifyToken, async (req, res) => {
   const ids = req.body.ids;
   if (!Array.isArray(ids) || ids.length === 0) {
     return res.status(400).json({ message: "Invalid user IDs." });
