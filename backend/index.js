@@ -1,11 +1,11 @@
-// Load environment variables
 require('dotenv').config();
 
 // Import dependencies
 const express = require('express');
-const path = require('path');
 const cors = require('cors');
 const db = require('./config/db');
+
+// Create Express app
 const app = express();
 
 // ✅ CORS configuration 
@@ -46,15 +46,9 @@ testDbConnection();
 app.use('/api/users', require('./routes/users'));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/admin', require('./routes/admin'));
-app.use(express.static(path.join(__dirname, '../frontend/build')));
 
 // Simple test route
 app.get('/', (req, res) => res.send('API is running.'));
-
-// redirection to the index
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
-});
 
 // DB health check endpoint
 app.get('/test-db', (req, res) => {
