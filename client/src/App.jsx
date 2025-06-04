@@ -12,7 +12,6 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/welcome" element={<Welcome />} />
-        <Route path="*" element={<div>404 - Página no encontrada</div>} />
       </Routes>
     </Router>
   );
