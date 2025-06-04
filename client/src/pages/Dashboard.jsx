@@ -34,7 +34,7 @@ function AdminPanel() {
         return;
       }
       const res = await axios.get(
-        `${import.meta.env.VITE_API_URL || /api/users`,
+        `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/admin/users,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setUsers(res.data.users);
