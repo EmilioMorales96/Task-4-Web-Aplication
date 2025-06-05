@@ -6,13 +6,12 @@ const pool = mysql.createPool({
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
-  ssl: { rejectUnauthorized: false }, 
+  ssl: { rejectUnauthorized: false },
   waitForConnections: true,
   connectionLimit: 10,
   connectTimeout: 10000
 });
 
-// Optional: test connection at startup
 pool.getConnection()
   .then(conn => {
     console.log('✅ Connected to MySQL database (Promise pool)');
@@ -20,7 +19,7 @@ pool.getConnection()
   })
   .catch(err => {
     console.error('❌ DB connection failed:', err.message);
-    process.exit(1); // Stop the server if DB is not reachable
+    process.exit(1);
   });
 
 module.exports = pool;
