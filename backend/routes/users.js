@@ -1,4 +1,3 @@
-
 const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
@@ -35,3 +34,6 @@ router.patch('/:id/status', verifyToken, blockIfUserBlocked, async (req, res) =>
     res.status(500).json({ message: 'Error updating status' });
   }
 });
+
+module.exports = router;
+
