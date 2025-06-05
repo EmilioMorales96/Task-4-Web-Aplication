@@ -16,7 +16,7 @@ router.post("/login", async (req, res) => {
     }
 
     // 2. Buscar usuario
-    const [user] = await db.query(
+    const [[user]] = await db.query(...)
       `SELECT * FROM users 
        WHERE email = ? AND status = 'active'`, 
       [email]
@@ -24,7 +24,7 @@ router.post("/login", async (req, res) => {
 
     if (!user) {
       return res.status(401).json({ 
-        error: "Credenciales inválidas o cuenta inactiva" 
+        error: "Invalid Credentials or Inactive Account" 
       });
     }
 
