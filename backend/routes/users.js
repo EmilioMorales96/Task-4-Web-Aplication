@@ -19,7 +19,12 @@ router.get('/', verifyToken, blockIfUserBlocked, async (req, res) => {
 
 // Block/unblock users
 router.patch('/:id/status', verifyToken, blockIfUserBlocked, async (req, res) => {
-  const userId = req.params.id;
+  const userId = parseInt(req.params.id);
+
+  // Prevent self-blocking
+  if (req.user.id === userId) {
+    return res.status(400).json({ message: "You cannot change your own status." });
+  }
   try {
     await db.query(
       'UPDATE users SET status = IF(status = "active", "blocked", "active") WHERE id = ?',
@@ -30,5 +35,3 @@ router.patch('/:id/status', verifyToken, blockIfUserBlocked, async (req, res) =>
     res.status(500).json({ message: 'Error updating status' });
   }
 });
-
-module.exports = router;
