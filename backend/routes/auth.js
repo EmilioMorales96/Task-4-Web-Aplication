@@ -138,10 +138,9 @@ router.post('/unblock/:id', verifyToken, async (req, res) => {
     const targetUserId = parseInt(req.params.id);
     const requesterUserId = req.user.id;
 
-    if (targetUserId === requesterUserId) {
-      return res.status(403).json({ message: "You can't unblock yourself" });
-    }
-
+  if (req.user.id === parseInt(req.params.id)) {
+  return res.status(400).json({ message: "You cannot block yourself" });
+}
     const [result] = await db.query('UPDATE users SET status = "active" WHERE id = ?', [targetUserId]);
 
     if (result.affectedRows === 0) {
