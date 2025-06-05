@@ -37,13 +37,23 @@ function AdminPanel() {
         `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/admin/users`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-
-      // Aquí recibimos un arreglo directamente, no un objeto con 'users'
-      setUsers(res.data); 
+      setUsers(res.data);
     } catch (err) {
-      if (err.response && err.response.status === 401) {
-        localStorage.removeItem("token");
-        navigate("/login");
+      if (err.response) {
+        if (err.response.status === 401) {
+          localStorage.removeItem("token");
+          navigate("/login");
+        } else if (err.response.status === 403) {
+          localStorage.setItem(
+            "logoutReason",
+            "You have been blocked by an administrator."
+          );
+          localStorage.removeItem("token");
+          navigate("/login");
+        } else {
+          setError("Failed to fetch users.");
+          console.error("Failed to fetch users:", err);
+        }
       } else {
         setError("Failed to fetch users.");
         console.error("Failed to fetch users:", err);
@@ -85,7 +95,6 @@ function AdminPanel() {
     }
   };
 
-  // Filtramos los usuarios
   const filteredUsers = users.filter(
     (u) =>
       u.name.toLowerCase().includes(filter.toLowerCase()) ||
