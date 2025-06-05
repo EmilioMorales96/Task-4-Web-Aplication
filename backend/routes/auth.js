@@ -4,6 +4,7 @@ const bcrypt = require("bcryptjs");
 const db = require('../config/db'); 
 const jwt = require("jsonwebtoken");
 const { verifyToken } = require('../middleware/authMiddleware'); // Importa el middleware
+const { login } = require('../controllers/authController');
 
 
 // POST /register
