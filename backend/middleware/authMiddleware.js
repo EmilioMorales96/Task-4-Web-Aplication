@@ -34,13 +34,16 @@ exports.roleCheck = (roles) => {
   };
 };
 
-exports.preventSelfAction = (req, res, next) => {
+function preventSelfAction(req, res, next) {
+  const userId = req.user?.id;
   const targetUserId = req.params.id; 
-  const authUserId = req.user.id;
 
-  if (targetUserId === String(authUserId)) {
-    return res.status(400).json({ message: "You cannot perform this action on yourself." });
+  if (!userId || !targetUserId) {
+    return res.status(400).json({ message: 'Bad request: missing user or target user ID' });
   }
 
+  if (userId.toString() === targetUserId.toString()) {
+    return res.status(403).json({ message: 'Action denied: cannot perform this action on yourself' });
+  }
   next();
-};
+}
