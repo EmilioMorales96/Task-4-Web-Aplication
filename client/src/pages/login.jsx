@@ -5,13 +5,13 @@ import logo from "../assets/itransition_logo.webp";
 import "../App.css";
 
 function Login() {
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // 👇 Show logout reason if redirected (e.g. blocked user)
   useEffect(() => {
     const reason = localStorage.getItem("logoutReason");
     if (reason) {
@@ -22,19 +22,21 @@ function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
     setStatus("");
+    if (!email.includes("@")) {
+      setStatus("❌ Please enter a valid email.");
+      return;
+    }
+    setLoading(true);
     try {
-      const res = await axios.post(
-        `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/auth/login`,
-        { email, password }
-      );
+      const res = await axios.post(`${API_URL}/api/auth/login`, { email, password });
       localStorage.setItem("token", res.data.token);
       setStatus("✅ Login successful!");
       setTimeout(() => navigate("/dashboard"), 1000);
     } catch (err) {
       console.error(err);
-      setStatus("❌ Login failed. Please check your credentials.");
+      const msg = err.response?.data?.message || "Login failed. Please check your credentials.";
+      setStatus(`❌ ${msg}`);
     } finally {
       setLoading(false);
     }
@@ -78,7 +80,9 @@ function Login() {
             />
           </div>
           <div className="login-forgot">
-            <a href="#">Forgot password?</a>
+            <Link to="/forgot-password" className="login-forgot-link">
+              Forgot password?
+            </Link>
           </div>
           <button type="submit" className="login-btn" disabled={loading}>
             {loading ? "Signing In..." : "Sign In"}
@@ -94,3 +98,4 @@ function Login() {
 }
 
 export default Login;
+
