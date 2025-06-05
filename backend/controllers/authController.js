@@ -16,17 +16,18 @@ router.post("/login", async (req, res) => {
     }
 
     // 2. Buscar usuario
-    const [[user]] = await db.query(...)
-      `SELECT * FROM users 
-       WHERE email = ? AND status = 'active'`, 
-      [email]
-    );
+    const [[user]] = await db.query(
+  `SELECT * FROM users WHERE email = ?`, 
+   [email]
+   );
 
-    if (!user) {
-      return res.status(401).json({ 
-        error: "Invalid Credentials or Inactive Account" 
-      });
-    }
+   if (!user) {
+  return res.status(401).json({ error: "User not found" });
+  }
+
+   if (user.status !== 'active') {
+  return res.status(403).json({ error: "Blocked acount or inactive" });
+  }
 
     // 3. Verificar contraseña
     const validPassword = await bcrypt.compare(password, user.password);
@@ -42,7 +43,7 @@ router.post("/login", async (req, res) => {
         [email]
       );
       
-      return res.status(401).json({ error: "Credenciales inválidas" });
+      return res.status(401).json({ error: "Invalid credentials" });
     }
 
     // 4. Login exitoso - Resetear intentos
