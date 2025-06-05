@@ -2,7 +2,7 @@ router.post("/login", async (req, res) => {
   const { email, password } = req.body;
   
   try {
-    // 1. Verificar intentos previos
+    // 1. Check previous login attempts and blocking
     const [[attempt]] = await db.query(
       `SELECT * FROM login_attempts 
        WHERE email = ? AND blocked_until > NOW()`, 
@@ -11,28 +11,28 @@ router.post("/login", async (req, res) => {
 
     if (attempt) {
       return res.status(403).json({
-        error: `Cuenta bloqueada temporalmente. Intenta después de ${new Date(attempt.blocked_until).toLocaleTimeString()}`
+        error: `Account temporarily locked. Try again after ${new Date(attempt.blocked_until).toLocaleTimeString()}`
       });
     }
 
-    // 2. Buscar usuario sin filtrar status para controlarlo luego
+    // 2. Find user without filtering status yet
     const [[user]] = await db.query(
       `SELECT * FROM users WHERE email = ?`, 
       [email]
     );
 
     if (!user) {
-      return res.status(401).json({ error: "Usuario no encontrado" });
+      return res.status(401).json({ error: "User not found" });
     }
 
     if (user.status !== 'active') {
-      return res.status(403).json({ error: "Cuenta bloqueada o inactiva" });
+      return res.status(403).json({ error: "Account blocked or inactive" });
     }
 
-    // 3. Verificar contraseña (bcrypt.compare si usas hashing)
+    // 3. Check password validity with bcrypt.compare
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) {
-      // Registrar intento fallido
+      // Register failed login attempt
       await db.query(
         `INSERT INTO login_attempts (email, attempts) 
          VALUES (?, 1) 
@@ -43,13 +43,13 @@ router.post("/login", async (req, res) => {
         [email]
       );
       
-      return res.status(401).json({ error: "Credenciales inválidas" });
+      return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    // 4. Login exitoso - Resetear intentos
+    // 4. Successful login - reset attempts
     await db.query(`DELETE FROM login_attempts WHERE email = ?`, [email]);
 
-    // 5. Generar token
+    // 5. Generate JWT token
     const token = jwt.sign(
       {
         id: user.id,
@@ -60,10 +60,10 @@ router.post("/login", async (req, res) => {
       { expiresIn: "2h" }
     );
 
-    // 6. Actualizar último login
+    // 6. Update last login time
     await db.query(`UPDATE users SET last_login = NOW() WHERE id = ?`, [user.id]);
 
-    // 7. Responder con datos seguros
+    // 7. Respond with user info and token
     res.json({
       token,
       user: {
@@ -75,7 +75,9 @@ router.post("/login", async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Error en login:", error);
-    res.status(500).json({ error: "Error interno del servidor" });
+    console.error("Login error:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
+
+module.exports = { login };
