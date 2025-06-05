@@ -1,16 +1,25 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "axios";
 import logo from "../assets/itransition_logo.webp";
 import "../App.css";
-// Importing necessary libraries and assets
+
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-// Using useNavigate hook for navigation
+
+  // 👇 Show logout reason if redirected (e.g. blocked user)
+  useEffect(() => {
+    const reason = localStorage.getItem("logoutReason");
+    if (reason) {
+      setStatus(`❌ ${reason}`);
+      localStorage.removeItem("logoutReason");
+    }
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -30,7 +39,7 @@ function Login() {
       setLoading(false);
     }
   };
-// Handling form submission and API request for login
+
   return (
     <div className="login-split-bg">
       <div className="login-left">
@@ -74,9 +83,9 @@ function Login() {
           <button type="submit" className="login-btn" disabled={loading}>
             {loading ? "Signing In..." : "Sign In"}
           </button>
-         <div className="login-signup">
-          Don&apos;t have an account? <Link to="/register">Sign up</Link>
-         </div>
+          <div className="login-signup">
+            Don&apos;t have an account? <Link to="/register">Sign up</Link>
+          </div>
         </form>
       </div>
       <div className="login-right" />
