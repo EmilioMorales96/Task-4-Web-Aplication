@@ -3,9 +3,9 @@ const router = express.Router();
 const bcrypt = require("bcryptjs");
 const db = require('../config/db'); 
 const jwt = require("jsonwebtoken");
+const { verifyToken } = require('../middlewares/authMiddleware'); // Importa el middleware
 
 
-// POST /register
 // POST /register
 router.post('/register', async (req, res) => {
   try {
@@ -45,7 +45,6 @@ router.post('/register', async (req, res) => {
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
   try {
-    // Step 1: Veriry if the user is registred and not blocked
     const [attemptRows] = await db.query(
       "SELECT * FROM login_attempts WHERE email = ?",
       [email]
@@ -57,16 +56,15 @@ router.post("/login", async (req, res) => {
         error: "Too many failed attempts. Try again later.",
       });
     }
-    // Step 2: Search user
+
     const [userRows] = await db.query(
       "SELECT * FROM users WHERE email = ?",
       [email]
     );
     const user = userRows[0];
-    // Step 3: Validate password
+
     const isValid = user && (await bcrypt.compare(password, user.password));
     if (!isValid) {
-      // Falló login: actualizar intentos
       if (!attempt) {
         await db.query(
           "INSERT INTO login_attempts (email, attempts) VALUES (?, ?)",
@@ -83,11 +81,11 @@ router.post("/login", async (req, res) => {
       }
       return res.status(401).json({ error: "Invalid credentials." });
     }
-    // Step 4: Login successful: reset attempts
+
     await db.query("DELETE FROM login_attempts WHERE email = ?", [
       email,
     ]);
-    // Generate JWT token
+
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
       process.env.JWT_SECRET,
@@ -111,4 +109,74 @@ router.get('/verify', (req, res) => {
   });
 });
 
+// Bloquear usuario
+router.post('/block/:id', verifyToken, async (req, res) => {
+  try {
+    const targetUserId = parseInt(req.params.id);
+    const requesterUserId = req.user.id;
+
+    if (targetUserId === requesterUserId) {
+      return res.status(403).json({ message: "You can't block yourself" });
+    }
+
+    const [result] = await db.query('UPDATE users SET status = "blocked" WHERE id = ?', [targetUserId]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({ message: 'User blocked successfully' });
+  } catch (err) {
+    console.error('Error blocking user:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Desbloquear usuario
+router.post('/unblock/:id', verifyToken, async (req, res) => {
+  try {
+    const targetUserId = parseInt(req.params.id);
+    const requesterUserId = req.user.id;
+
+    if (targetUserId === requesterUserId) {
+      return res.status(403).json({ message: "You can't unblock yourself" });
+    }
+
+    const [result] = await db.query('UPDATE users SET status = "active" WHERE id = ?', [targetUserId]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({ message: 'User unblocked successfully' });
+  } catch (err) {
+    console.error('Error unblocking user:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Eliminar usuario
+router.delete('/delete/:id', verifyToken, async (req, res) => {
+  try {
+    const targetUserId = parseInt(req.params.id);
+    const requesterUserId = req.user.id;
+
+    if (targetUserId === requesterUserId) {
+      return res.status(403).json({ message: "You can't delete yourself" });
+    }
+
+    const [result] = await db.query('DELETE FROM users WHERE id = ?', [targetUserId]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({ message: 'User deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting user:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router;
+
