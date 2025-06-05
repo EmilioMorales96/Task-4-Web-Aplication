@@ -3,7 +3,7 @@ router.post("/login", async (req, res) => {
   
   try {
     // 1. Verificar intentos previos
-    const [attempt] = await db.query(
+    const [[attempt]] = await db.query(
       `SELECT * FROM login_attempts 
        WHERE email = ? AND blocked_until > NOW()`, 
       [email]
@@ -15,21 +15,21 @@ router.post("/login", async (req, res) => {
       });
     }
 
-    // 2. Buscar usuario
+    // 2. Buscar usuario sin filtrar status para controlarlo luego
     const [[user]] = await db.query(
-  `SELECT * FROM users WHERE email = ?`, 
-   [email]
-   );
+      `SELECT * FROM users WHERE email = ?`, 
+      [email]
+    );
 
-   if (!user) {
-  return res.status(401).json({ error: "User not found" });
-  }
+    if (!user) {
+      return res.status(401).json({ error: "Usuario no encontrado" });
+    }
 
-   if (user.status !== 'active') {
-  return res.status(403).json({ error: "Blocked acount or inactive" });
-  }
+    if (user.status !== 'active') {
+      return res.status(403).json({ error: "Cuenta bloqueada o inactiva" });
+    }
 
-    // 3. Verificar contraseña
+    // 3. Verificar contraseña (bcrypt.compare si usas hashing)
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) {
       // Registrar intento fallido
@@ -43,7 +43,7 @@ router.post("/login", async (req, res) => {
         [email]
       );
       
-      return res.status(401).json({ error: "Invalid credentials" });
+      return res.status(401).json({ error: "Credenciales inválidas" });
     }
 
     // 4. Login exitoso - Resetear intentos
