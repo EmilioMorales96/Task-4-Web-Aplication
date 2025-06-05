@@ -1,5 +1,4 @@
 const db = require('../config/db');
-
 // Middleware to check if user is an admin
 function adminOnly(req, res, next) {
   if (req.user && req.user.role === 'admin') {
@@ -12,7 +11,8 @@ function adminOnly(req, res, next) {
 async function blockIfUserBlocked(req, res, next) {
   try {
     const userId = req.user.id;
-    const [results] = await db.promise().query('SELECT status FROM users WHERE id = ?', [userId]);
+
+    const [results] = await db.query('SELECT status FROM users WHERE id = ?', [userId]);
 
     if (results.length === 0 || results[0].status === 'blocked') {
       return res.status(403).json({ message: 'Access denied. User is blocked.' });
