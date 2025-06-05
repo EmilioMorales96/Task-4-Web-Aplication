@@ -1,16 +1,21 @@
 const express = require("express");
 const router = express.Router();
 const db = require('../config/db');
-const { verifyToken } = require("../middleware/authMiddleware"); 
+const { verifyToken } = require("../middleware/authMiddleware");
+const { blockIfUserBlocked } = require("../middleware/statusMiddleware");
 
-// Función para preparar placeholders y valores para el IN (?)
+// Middleware global para todas las rutas de este archivo
+router.use(verifyToken);
+router.use(blockIfUserBlocked);
+
+// Función auxiliar para preparar placeholders y valores para el IN (?)
 function formatIdsForQuery(ids) {
   const placeholders = ids.map(() => '?').join(',');
   return { placeholders, values: ids };
 }
 
-// Obtener todos los usuarios (sin filtrar por rol)
-router.get("/users", verifyToken, async (req, res) => {
+// Obtener todos los usuarios
+router.get("/users", async (req, res) => {
   try {
     const [results] = await db.query(`
       SELECT id, name, email, role, status, last_login 
@@ -24,7 +29,7 @@ router.get("/users", verifyToken, async (req, res) => {
 });
 
 // Bloquear usuarios
-router.post("/block", verifyToken, async (req, res) => {
+router.post("/block", async (req, res) => {
   const ids = req.body.ids;
   if (!Array.isArray(ids) || ids.length === 0) {
     return res.status(400).json({ message: "Invalid user IDs" });
@@ -41,7 +46,7 @@ router.post("/block", verifyToken, async (req, res) => {
 });
 
 // Desbloquear usuarios
-router.post("/unblock", verifyToken, async (req, res) => {
+router.post("/unblock", async (req, res) => {
   const ids = req.body.ids;
   if (!Array.isArray(ids) || ids.length === 0) {
     return res.status(400).json({ message: "Invalid user IDs" });
@@ -58,13 +63,13 @@ router.post("/unblock", verifyToken, async (req, res) => {
 });
 
 // Eliminar usuarios
-router.post("/delete", verifyToken, async (req, res) => {
+router.post("/delete", async (req, res) => {
   const ids = req.body.ids;
   if (!Array.isArray(ids) || ids.length === 0) {
     return res.status(400).json({ message: "Invalid user IDs" });
   }
   try {
-    const {placeholders, values} = formatIdsForQuery(ids);
+    const { placeholders, values } = formatIdsForQuery(ids);
     const sql = `DELETE FROM users WHERE id IN (${placeholders})`;
     await db.query(sql, values);
     res.json({ message: "Users deleted successfully." });
