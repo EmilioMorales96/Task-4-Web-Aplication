@@ -16,7 +16,6 @@ exports.verifyToken = (req, res, next) => {
     next();
   });
 };
-
 exports.isAdmin = (req, res, next) => {
   if (req.user?.role !== 'admin') {
     return res.status(403).json({
@@ -42,15 +41,6 @@ exports.preventSelfAction = (req, res, next) => {
   if (targetUserId === String(authUserId)) {
     return res.status(400).json({ message: "You cannot perform this action on yourself." });
   }
-  next();
-};
 
-// Middleware adicional para protección de rutas
-exports.roleCheck = (roles) => {
-  return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
-      return res.status(403).json({ message: "Insufficient permissions" });
-    }
-    next();
-  };
+  next();
 };
