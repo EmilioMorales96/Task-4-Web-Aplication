@@ -1,87 +1,175 @@
-const db = require('../config/db');
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
+const bcrypt = require("bcryptjs");
+const db = require("../config/db");
+const jwt = require("jsonwebtoken");
 
-const login = async (req, res) => {
-  const { email, password } = req.body;
-  
+// Register user
+async function register(req, res) {
   try {
-    // 1. Check previous login attempts and blocking
-    const [[attempt]] = await db.query(
-      `SELECT * FROM login_attempts 
-       WHERE email = ? AND blocked_until > NOW()`, 
+    const { name, email, password } = req.body;
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: "All fields required" });
+    }
+
+    const [existing] = await db.query(
+      "SELECT id FROM users WHERE email = ?",
       [email]
     );
 
-    if (attempt) {
+    if (existing.length > 0) {
+      return res.status(409).json({ error: "Email already exists" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const role = "admin"; // o 'user' según tu lógica
+
+    await db.query(
+      `INSERT INTO users (name, email, password, status, role) VALUES (?, ?, ?, 'active', ?)`,
+      [name, email, hashedPassword, role]
+    );
+
+    res.status(201).json({ message: "User registered" });
+  } catch (error) {
+    console.error("🔥 Registration error:", error);
+    res.status(500).json({ error: "Registration failed" });
+  }
+}
+
+// Login user
+async function login(req, res) {
+  const { email, password } = req.body;
+  try {
+    const [attemptRows] = await db.query(
+      "SELECT * FROM login_attempts WHERE email = ?",
+      [email]
+    );
+    const attempt = attemptRows[0];
+    const now = new Date();
+    if (attempt && attempt.blocked_until && new Date(attempt.blocked_until) > now) {
       return res.status(403).json({
-        error: `Account temporarily locked. Try again after ${new Date(attempt.blocked_until).toLocaleTimeString()}`
+        error: "Too many failed attempts. Try again later.",
       });
     }
 
-    // 2. Find user without filtering status yet
-    const [[user]] = await db.query(
-      `SELECT * FROM users WHERE email = ?`, 
-      [email]
-    );
+    const [userRows] = await db.query("SELECT * FROM users WHERE email = ?", [
+      email,
+    ]);
+    const user = userRows[0];
 
-    if (!user) {
-      return res.status(401).json({ error: "User not found" });
-    }
-
-    if (user.status !== 'active') {
-      return res.status(403).json({ error: "Account blocked or inactive" });
-    }
-
-    // 3. Check password validity with bcrypt.compare
-    const validPassword = await bcrypt.compare(password, user.password);
-    if (!validPassword) {
-      // Register failed login attempt
-      await db.query(
-        `INSERT INTO login_attempts (email, attempts) 
-         VALUES (?, 1) 
-         ON DUPLICATE KEY UPDATE 
-         attempts = attempts + 1, 
-         last_attempt = NOW(),
-         blocked_until = IF(attempts >= 3, DATE_ADD(NOW(), INTERVAL 15 MINUTE), NULL)`,
-        [email]
-      );
-      
-      return res.status(401).json({ error: "Invalid credentials" });
-    }
-
-    // 4. Successful login - reset attempts
-    await db.query(`DELETE FROM login_attempts WHERE email = ?`, [email]);
-
-    // 5. Generate JWT token
-    const token = jwt.sign(
-      {
-        id: user.id,
-        email: user.email,
-        role: user.role
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: "2h" }
-    );
-
-    // 6. Update last login time
-    await db.query(`UPDATE users SET last_login = NOW() WHERE id = ?`, [user.id]);
-
-    // 7. Respond with user info and token
-    res.json({
-      token,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role
+    const isValid = user && (await bcrypt.compare(password, user.password));
+    if (!isValid) {
+      if (!attempt) {
+        await db.query(
+          "INSERT INTO login_attempts (email, attempts) VALUES (?, ?)",
+          [email, 1]
+        );
+      } else {
+        const newAttempts = attempt.attempts + 1;
+        const blockedUntil =
+          newAttempts >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null;
+        await db.query(
+          "UPDATE login_attempts SET attempts = ?, last_attempt = ?, blocked_until = ? WHERE email = ?",
+          [newAttempts, now, blockedUntil, email]
+        );
       }
-    });
+      return res.status(401).json({ error: "Invalid credentials." });
+    }
 
-  } catch (error) {
-    console.error("Login error:", error);
-    res.status(500).json({ error: "Internal server error" });
+    await db.query("DELETE FROM login_attempts WHERE email = ?", [email]);
+
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+    res.json({ token });
+  } catch (err) {
+    console.error("🔥 Internal error in /login:", err);
+    res.status(500).json({ error: "Internal server error." });
   }
-};
+}
 
-module.exports = { login };
+// Block user
+async function blockUser(req, res) {
+  try {
+    const targetUserId = parseInt(req.params.id);
+    const requesterUserId = req.user.id;
+
+    if (targetUserId === requesterUserId) {
+      return res.status(403).json({ message: "You can't block yourself" });
+    }
+
+    const [result] = await db.query(
+      'UPDATE users SET status = "blocked" WHERE id = ?',
+      [targetUserId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json({ message: "User blocked successfully" });
+  } catch (err) {
+    console.error("Error blocking user:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+}
+
+// Unblock user
+async function unblockUser(req, res) {
+  try {
+    const targetUserId = parseInt(req.params.id);
+    const requesterUserId = req.user.id;
+
+    if (targetUserId === requesterUserId) {
+      return res.status(403).json({ message: "You can't unblock yourself" });
+    }
+
+    const [result] = await db.query(
+      'UPDATE users SET status = "active" WHERE id = ?',
+      [targetUserId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json({ message: "User unblocked successfully" });
+  } catch (err) {
+    console.error("Error unblocking user:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+}
+
+// Delete user
+async function deleteUser(req, res) {
+  try {
+    const targetUserId = parseInt(req.params.id);
+    const requesterUserId = req.user.id;
+
+    if (targetUserId === requesterUserId) {
+      return res.status(403).json({ message: "You can't delete yourself" });
+    }
+
+    const [result] = await db.query("DELETE FROM users WHERE id = ?", [
+      targetUserId,
+    ]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json({ message: "User deleted successfully" });
+  } catch (err) {
+    console.error("Error deleting user:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+}
+
+module.exports = {
+  register,
+  login,
+  blockUser,
+  unblockUser,
+  deleteUser,
+};
