@@ -29,8 +29,8 @@ const roleCheck = (roles) => {
 };
 
 function preventSelfAction(req, res, next) {
-  const currentUserId = parseInt(req.user.id);
-  const targetUserId = parseInt(req.params.id);
+  const currentUserId = String(req.user.id);
+  const targetUserId = String(req.params.id);
 
   if (currentUserId === targetUserId) {
     return res.status(403).json({ message: 'You cannot perform this action on yourself.' });
