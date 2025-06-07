@@ -4,7 +4,8 @@ const bcrypt = require("bcryptjs");
 const db = require('../config/db'); 
 const jwt = require("jsonwebtoken");
 const { verifyToken } = require('../middleware/authMiddleware'); // Importa el middleware
-
+const authController = require('../controllers/authController');
+const { verifyToken, isAdmin, preventSelfAction } = require('../middleware/authMiddleware');
 
 // POST /register
 router.post('/register', async (req, res) => {
@@ -176,5 +177,10 @@ router.delete('/delete/:id', verifyToken, async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+
+// Prevenir auto bloqueo
+router.put('/block/:id', verifyToken, preventSelfAction, authController.blockUser);
+router.put('/unblock/:id', verifyToken, preventSelfAction, authController.unblockUser);
+router.delete('/delete/:id', verifyToken, preventSelfAction, authController.deleteUser);
 
 module.exports = router;
