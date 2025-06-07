@@ -12,16 +12,13 @@ const verifyToken = (req, res, next) => {
   });
 };
 
-function preventSelfAction(req, res, next) {
-  const currentUserId = parseInt(req.user.id);
-  const targetUserId = parseInt(req.params.id);
-
-  if (currentUserId === targetUserId) {
-    return res.status(403).json({ message: 'You cannot perform this action on yourself.' });
+const isAdmin = (req, res, next) => {
+  if (req.user?.role !== 'admin') {
+    return res.status(403).json({ message: "Admin privileges required" });
   }
-
   next();
-}
+};
+
 const roleCheck = (roles) => {
   return (req, res, next) => {
     if (!roles.includes(req.user.role)) {
@@ -31,17 +28,14 @@ const roleCheck = (roles) => {
   };
 };
 
-const preventSelfAction = (req, res, next) => {
-  const userId = req.user?.id;
-  const targetUserId = req.params.id;
+function preventSelfAction(req, res, next) {
+  const currentUserId = parseInt(req.user.id);
+  const targetUserId = parseInt(req.params.id);
 
-  if (!userId || !targetUserId) {
-    return res.status(400).json({ message: 'Bad request: missing user or target user ID' });
+  if (currentUserId === targetUserId) {
+    return res.status(403).json({ message: 'You cannot perform this action on yourself.' });
   }
 
-  if (userId.toString() === targetUserId.toString()) {
-    return res.status(403).json({ message: 'Action denied: cannot perform this action on yourself' });
-  }
   next();
 };
 
