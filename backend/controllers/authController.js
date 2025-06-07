@@ -80,4 +80,4 @@ router.post("/login", async (req, res) => {
   }
 });
 
-module.exports = { login };
+module.exports = router;
