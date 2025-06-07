@@ -36,14 +36,18 @@ const roleCheck = (roles) => {
   };
 };
 
-// Previene que un usuario actúe sobre sí mismo (por ejemplo, bloquearse a sí mismo)
+// Previene que un usuario actúe sobre sí mismo
 const preventSelfAction = (req, res, next) => {
-  console.log("🧩 preventSelfAction ejecutado");
-  console.log("req.user:", req.user);
-  console.log("req.params.id:", req.params.id);
+  // Asegurarse que req.user y req.params.id existen
+  if (!req.user || !req.params.id) {
+    return res.status(400).json({ message: "Missing user information" });
+  }
 
-  if (req.user && req.user.id == req.params.id) {
-    return res.status(403).json({ message: "You cannot do this to yourself." });
+  // Comparar IDs como strings para evitar problemas de tipo
+  if (String(req.user.id) === String(req.params.id)) {
+    return res.status(403).json({ 
+      message: "Self-actions are not allowed for this operation",
+    });
   }
   next();
 };
