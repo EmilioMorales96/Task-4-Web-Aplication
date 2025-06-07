@@ -47,3 +47,4 @@ function preventSelfAction(req, res, next) {
   }
   next();
 }
+exports.preventSelfAction = preventSelfAction;
