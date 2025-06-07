@@ -3,7 +3,7 @@ const router = express.Router();
 const authController = require('../controllers/authController');
 const { verifyToken, preventSelfAction } = require('../middleware/authMiddleware');
 
-// REGISTER (lógica in-line porque está solo aquí)
+// REGISTER 
 router.post('/register', authController.register);
 
 // LOGIN
