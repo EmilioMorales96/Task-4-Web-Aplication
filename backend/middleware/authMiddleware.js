@@ -1,19 +1,25 @@
 const jwt = require('jsonwebtoken');
 
-// Verifica que el token JWT sea válido
+// Verifica que el token sea válido y asigna los datos del usuario al request
 const verifyToken = (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1];
-  if (!token) return res.status(401).json({ message: "No token provided" });
+  const token = req.headers.authorization?.split(' ')[1]; // Espera formato: Bearer <token>
+
+  if (!token) {
+    return res.status(401).json({ message: "No token provided" });
+  }
 
   jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-    if (err) return res.status(403).json({ message: "Invalid token" });
+    if (err) {
+      return res.status(403).json({ message: "Invalid token" });
+    }
 
+    console.log("🛡️ JWT Decoded:", decoded); // Verifica qué hay dentro del token
     req.user = decoded;
     next();
   });
 };
 
-// Verifica si el usuario tiene rol de administrador
+// Verifica si el usuario tiene rol "admin"
 const isAdmin = (req, res, next) => {
   if (req.user?.role !== 'admin') {
     return res.status(403).json({ message: "Admin privileges required" });
@@ -21,7 +27,6 @@ const isAdmin = (req, res, next) => {
   next();
 };
 
-// Verifica si el usuario tiene alguno de los roles permitidos
 const roleCheck = (roles) => {
   return (req, res, next) => {
     if (!roles.includes(req.user.role)) {
@@ -31,7 +36,7 @@ const roleCheck = (roles) => {
   };
 };
 
-// Previene que un usuario actúe sobre sí mismo (por ID)
+// Previene que un usuario actúe sobre sí mismo (por ejemplo, bloquearse a sí mismo)
 const preventSelfAction = (req, res, next) => {
   console.log("🧩 preventSelfAction ejecutado");
   console.log("req.user:", req.user);
@@ -43,12 +48,9 @@ const preventSelfAction = (req, res, next) => {
   next();
 };
 
-// Exporta todos los middlewares correctamente
 module.exports = {
   verifyToken,
   isAdmin,
   roleCheck,
   preventSelfAction,
 };
-
-
