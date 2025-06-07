@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const authController = require('../controllers/authController');
-const { verifyToken, preventSelfAction } = require('../middleware/authMiddleware');
+const { verifyToken, isAdmin, preventSelfAction } = require('../middleware/authMiddleware');
 const { blockIfUserBlocked } = require('../middleware/statusMiddleware');
 
 // REGISTER 
