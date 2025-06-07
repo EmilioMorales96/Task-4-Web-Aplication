@@ -1,4 +1,8 @@
-router.post("/login", async (req, res) => {
+const db = require('../config/db');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+
+const login = async (req, res) => {
   const { email, password } = req.body;
   
   try {
@@ -78,6 +82,6 @@ router.post("/login", async (req, res) => {
     console.error("Login error:", error);
     res.status(500).json({ error: "Internal server error" });
   }
-});
+};
 
-module.exports = router;
+module.exports = { login };
