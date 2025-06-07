@@ -8,6 +8,9 @@ const db = require('./config/db');
 // Create Express app
 const app = express();
 
+const authRoutes = require("./routes/auth");
+app.use("/api/auth", authRoutes);
+
 // ✅ CORS configuration 
 app.use(cors({
   origin: function (origin, callback) {
