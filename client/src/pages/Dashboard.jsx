@@ -16,6 +16,28 @@ import {
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 
+
+function UserActions({ userId }) {
+  const { user } = useAuth(); 
+  
+  return (
+    <div>
+      <button 
+        disabled={user.id === userId}
+        onClick={() => blockUser(userId)}
+      >
+        Block User
+      </button>
+      
+      {user.id === userId && (
+        <div className="text-red-500">
+          You cannot perform this action on yourself
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AdminPanel() {
   const [users, setUsers] = useState([]);
   const [selectedUsers, setSelectedUsers] = useState([]);
