@@ -3,6 +3,8 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const db = require('./config/db');
+const authRoutes = require("./routes/auth");
+
 
 const app = express();
 
@@ -10,7 +12,6 @@ const app = express();
 app.use(cors({
   origin: function (origin, callback) {
     const allowedOrigins = [
-      "http://localhost:5173",
       "https://task-4-web-aplication-1.onrender.com"
     ];
     if (!origin || allowedOrigins.includes(origin)) {
@@ -29,7 +30,7 @@ app.use(cors({
 app.use(express.json());
 
 // Rutas
-const authRoutes = require("./routes/auth");
+
 app.use("/api/auth", authRoutes);
 app.use('/api/users', require('./routes/users'));
 app.use('/api/admin', require('./routes/admin'));
