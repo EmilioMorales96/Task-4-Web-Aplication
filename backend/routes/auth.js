@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const db = require('../config/db');
 const authController = require('../controllers/authController');
 const { verifyToken, isAdmin, preventSelfAction } = require('../middleware/authMiddleware');
 const { blockIfUserBlocked } = require('../middleware/statusMiddleware');
