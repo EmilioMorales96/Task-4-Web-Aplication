@@ -32,12 +32,15 @@ function preventSelfAction(req, res, next) {
   const currentUserId = String(req.user.id);
   const targetUserId = String(req.params.id);
 
+  console.log("Current User ID:", currentUserId, "Target User ID:", targetUserId);
+
   if (currentUserId === targetUserId) {
     return res.status(403).json({ message: 'You cannot perform this action on yourself.' });
   }
 
   next();
 };
+
 
 module.exports = {
   verifyToken,
