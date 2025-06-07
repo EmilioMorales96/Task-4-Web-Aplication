@@ -28,18 +28,17 @@ const roleCheck = (roles) => {
   };
 };
 
-function preventSelfAction(req, res, next) {
-  const currentUserId = String(req.user.id);
-  const targetUserId = String(req.params.id);
+module.exports.preventSelfAction = (req, res, next) => {
+  console.log("🧩 preventSelfAction ejecutado");
+  console.log("req.user:", req.user);
+  console.log("req.params.id:", req.params.id);
 
-  console.log("Current User ID:", currentUserId, "Target User ID:", targetUserId);
-
-  if (currentUserId === targetUserId) {
-    return res.status(403).json({ message: 'You cannot perform this action on yourself.' });
+  if (req.user && req.user.id == req.params.id) {
+    return res.status(403).json({ message: "You cannot do this to yourself." });
   }
-
   next();
 };
+
 
 
 module.exports = {
