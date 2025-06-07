@@ -12,13 +12,16 @@ const verifyToken = (req, res, next) => {
   });
 };
 
-const isAdmin = (req, res, next) => {
-  if (req.user?.role !== 'admin') {
-    return res.status(403).json({ message: "Admin privileges required" });
-  }
-  next();
-};
+function preventSelfAction(req, res, next) {
+  const currentUserId = parseInt(req.user.id);
+  const targetUserId = parseInt(req.params.id);
 
+  if (currentUserId === targetUserId) {
+    return res.status(403).json({ message: 'You cannot perform this action on yourself.' });
+  }
+
+  next();
+}
 const roleCheck = (roles) => {
   return (req, res, next) => {
     if (!roles.includes(req.user.role)) {
