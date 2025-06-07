@@ -1,17 +1,12 @@
 require('dotenv').config();
 
-// Import dependencies
 const express = require('express');
 const cors = require('cors');
 const db = require('./config/db');
 
-// Create Express app
 const app = express();
 
-const authRoutes = require("./routes/auth");
-app.use("/api/auth", authRoutes);
-
-// ✅ CORS configuration 
+// CORS middleware
 app.use(cors({
   origin: function (origin, callback) {
     const allowedOrigins = [
@@ -27,12 +22,22 @@ app.use(cors({
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true,
   allowedHeaders: ["Content-Type", "Authorization"],
-  optionsSuccessStatus: 200 
+  optionsSuccessStatus: 200
 }));
 
+// Parse JSON bodies
 app.use(express.json());
 
-// ✅ Test DB connection on startup
+// Rutas
+const authRoutes = require("./routes/auth");
+app.use("/api/auth", authRoutes);
+app.use('/api/users', require('./routes/users'));
+app.use('/api/admin', require('./routes/admin'));
+
+
+app.get('/', (req, res) => res.send('API is running.'));
+
+// Test DB connection al inicio 
 async function testDbConnection() {
   try {
     await db.query('SELECT 1');
@@ -42,28 +47,8 @@ async function testDbConnection() {
     process.exit(1);
   }
 }
-
 testDbConnection();
 
-// ✅ Routes
-app.use('/api/users', require('./routes/users'));
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/admin', require('./routes/admin'));
-
-// Simple test route
-app.get('/', (req, res) => res.send('API is running.'));
-
-// DB health check endpoint
-app.get('/test-db', (req, res) => {
-  db.query('SELECT 1', (err) => {
-    if (err) {
-      res.status(500).send('❌ DB Error: ' + err.message);
-    } else {
-      res.send('✅ DB Funciona');
-    }
-  });
-});
-
-// Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server on port ${PORT}`));
+
