@@ -19,7 +19,7 @@ router.get('/verify', verifyToken, (req, res) => {
 router.post('/block/:id', verifyToken, preventSelfAction, authController.blockUser);
 
 // DESBLOQUEAR USUARIO
-router.post("/unblock/:id", verifyToken, blockIfUserBlocked, preventSelfAction, unblockUser);
+router.post("/unblock/:id", verifyToken, blockIfUserBlocked, preventSelfAction, authController.unblockUser);
 
 // ELIMINAR USUARIO
 router.delete('/delete/:id', verifyToken, preventSelfAction, authController.deleteUser);
