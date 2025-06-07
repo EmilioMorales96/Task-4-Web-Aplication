@@ -14,14 +14,20 @@ async function blockIfUserBlocked(req, res, next) {
 
     const [results] = await db.query('SELECT status FROM users WHERE id = ?', [userId]);
 
-    if (results.length === 0 || results[0].status === 'blocked') {
-      return res.status(403).json({ message: 'Access denied. User is blocked.' });
+    if (results.length === 0) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    const userStatus = results[0].status;
+
+    if (userStatus === 'blocked') {
+      return res.status(403).json({ message: 'Access denied. Your account is blocked.' });
     }
 
     next();
   } catch (err) {
     console.error('Error checking user status:', err);
-    return res.status(500).json({ message: 'Server error.' });
+    return res.status(500).json({ message: 'Server error while checking status.' });
   }
 }
 
