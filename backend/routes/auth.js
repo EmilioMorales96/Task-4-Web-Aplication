@@ -3,7 +3,6 @@ const router = express.Router();
 const bcrypt = require("bcryptjs");
 const db = require('../config/db'); 
 const jwt = require("jsonwebtoken");
-const { verifyToken } = require('../middleware/authMiddleware'); // Importa el middleware
 const authController = require('../controllers/authController');
 const { verifyToken, isAdmin, preventSelfAction } = require('../middleware/authMiddleware');
 
