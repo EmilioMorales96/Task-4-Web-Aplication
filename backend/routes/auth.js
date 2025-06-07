@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const authController = require('../controllers/authController');
 const { verifyToken, preventSelfAction } = require('../middleware/authMiddleware');
-const { blockIfUserBlocked } = require('../middlewares/statusMiddleware');
+const { blockIfUserBlocked } = require('../middleware/statusMiddleware');
 
 // REGISTER 
 router.post('/register', authController.register);
