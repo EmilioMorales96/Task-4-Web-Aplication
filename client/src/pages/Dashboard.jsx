@@ -38,7 +38,8 @@ function AdminPanel() {
     open: false,
     title: "",
     message: "",
-    action: null
+    action: null,
+    isSelfAction: false
   });
   const navigate = useNavigate();
 
@@ -113,57 +114,46 @@ function AdminPanel() {
     setSnackbar({ ...snackbar, open: false });
   };
 
-  const isSafeSelection = (selectedIds) => {
-    if (!currentUser) return true;
-    return !selectedIds.includes(currentUser.id);
-  };
-
   const handleSelectAll = (e) => {
-    if (e.target.checked) {
-      const safeUsers = users.filter(u => u.id !== currentUser?.id).map(u => u.id);
-      setSelectedUsers(safeUsers);
-    } else {
-      setSelectedUsers([]);
-    }
+    setSelectedUsers(e.target.checked ? users.map(u => u.id) : []);
   };
 
   const handleSelect = (id) => {
-    if (id === currentUser?.id) return;
-    setSelectedUsers((prev) =>
-      prev.includes(id) ? prev.filter((uid) => uid !== id) : [...prev, id]
+    setSelectedUsers(prev =>
+      prev.includes(id) ? prev.filter(uid => uid !== id) : [...prev, id]
     );
   };
 
   const showConfirmationDialog = (action) => {
+    const isSelfAction = selectedUsers.includes(currentUser?.id);
+    
     const actions = {
       block: {
-        title: "Confirm Block",
-        message: `Are you sure you want to block ${selectedUsers.length} user(s)?`
+        title: isSelfAction ? "⚠️ Confirm Self-Block" : "Confirm Block",
+        message: isSelfAction
+          ? "You are about to BLOCK YOURSELF. This will immediately log you out. Continue?"
+          : `Block ${selectedUsers.length} user(s)?`
       },
       unblock: {
         title: "Confirm Unblock",
-        message: `Are you sure you want to unblock ${selectedUsers.length} user(s)?`
+        message: `Unblock ${selectedUsers.length} user(s)?`
       },
       delete: {
         title: "Confirm Deletion",
-        message: `This will permanently delete ${selectedUsers.length} user(s). Continue?`
+        message: `Permanently delete ${selectedUsers.length} user(s)?`
       }
     };
 
     setConfirmDialog({
       open: true,
       action,
+      isSelfAction,
       ...actions[action]
     });
   };
 
   const performAction = async (action) => {
     try {
-      if (!isSafeSelection(selectedUsers)) {
-        showSnackbar("Cannot perform actions on yourself!", "error");
-        return;
-      }
-
       const token = localStorage.getItem("token");
       const response = await axios.post(
         `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/admin/${action}`,
@@ -172,7 +162,16 @@ function AdminPanel() {
       );
 
       showSnackbar(response.data.message || `${action} successful!`);
-      fetchUsers();
+      
+      // Auto-logout if user blocked themselves
+      if (confirmDialog.isSelfAction && action === "block") {
+        showSnackbar("You have been blocked. Contact an administrator.", "warning");
+        localStorage.removeItem("token");
+        navigate("/login");
+      } else {
+        fetchUsers();
+      }
+      
       setSelectedUsers([]);
     } catch (err) {
       handleApiError(err);
@@ -185,9 +184,8 @@ function AdminPanel() {
   };
 
   const filteredUsers = users.filter(
-    (u) =>
-      u.name?.toLowerCase().includes(filter.toLowerCase()) ||
-      u.email?.toLowerCase().includes(filter.toLowerCase())
+    u => u.name?.toLowerCase().includes(filter.toLowerCase()) ||
+         u.email?.toLowerCase().includes(filter.toLowerCase())
   );
 
   const handleLogout = () => {
@@ -198,15 +196,12 @@ function AdminPanel() {
   return (
     <div className="admin-panel" style={{ padding: 24 }}>
       {/* Header */}
-      <div
-        className="dashboard-header"
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 24,
-        }}
-      >
+      <div style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: 24,
+      }}>
         <h2>Admin Dashboard</h2>
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
           {currentUser && (
@@ -214,38 +209,29 @@ function AdminPanel() {
               Logged in as: {currentUser.name} ({currentUser.role})
             </span>
           )}
-          <button className="logout-btn" onClick={handleLogout}>
+          <Button variant="contained" color="error" onClick={handleLogout}>
             Logout
-          </button>
+          </Button>
         </div>
       </div>
 
-      {/* Error Message */}
-      {error && (
-        <Alert severity="error" style={{ marginBottom: 16 }}>
-          {error}
-        </Alert>
-      )}
+      {error && <Alert severity="error" style={{ marginBottom: 16 }}>{error}</Alert>}
 
-      {/* Loading State */}
       {loading ? (
         <p>Loading users...</p>
       ) : (
         <>
-          {/* Action Buttons */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginBottom: 16,
-            }}
-          >
+          <div style={{
+            display: "flex",
+            justifyContent: "space-between",
+            marginBottom: 16,
+          }}>
             <div style={{ display: "flex", gap: "8px" }}>
               <Button
                 variant="contained"
                 color="error"
                 onClick={() => showConfirmationDialog("block")}
-                disabled={!selectedUsers.length || !isSafeSelection(selectedUsers)}
+                disabled={!selectedUsers.length}
               >
                 🔒 Block
               </Button>
@@ -253,7 +239,7 @@ function AdminPanel() {
                 variant="contained"
                 color="success"
                 onClick={() => showConfirmationDialog("unblock")}
-                disabled={!selectedUsers.length || !isSafeSelection(selectedUsers)}
+                disabled={!selectedUsers.length}
               >
                 🔓 Unblock
               </Button>
@@ -261,7 +247,7 @@ function AdminPanel() {
                 variant="outlined"
                 color="error"
                 onClick={() => showConfirmationDialog("delete")}
-                disabled={!selectedUsers.length || !isSafeSelection(selectedUsers)}
+                disabled={!selectedUsers.length || selectedUsers.includes(currentUser?.id)}
               >
                 🗑 Delete
               </Button>
@@ -276,7 +262,6 @@ function AdminPanel() {
             />
           </div>
 
-          {/* Users Table */}
           <div className="dashboard-table-responsive">
             <TableContainer component={Paper}>
               <Table>
@@ -284,15 +269,8 @@ function AdminPanel() {
                   <TableRow>
                     <TableCell padding="checkbox">
                       <Checkbox
-                        checked={
-                          selectedUsers.length === 
-                          users.filter(u => u.id !== currentUser?.id).length 
-                          && users.length > 0
-                        }
-                        indeterminate={
-                          selectedUsers.length > 0 &&
-                          selectedUsers.length < users.filter(u => u.id !== currentUser?.id).length
-                        }
+                        checked={selectedUsers.length === users.length && users.length > 0}
+                        indeterminate={selectedUsers.length > 0 && selectedUsers.length < users.length}
                         onChange={handleSelectAll}
                       />
                     </TableCell>
@@ -315,9 +293,11 @@ function AdminPanel() {
                         hover
                         selected={selectedUsers.includes(user.id)}
                         style={{
-                          backgroundColor: isCurrentUser ? "#f5f5f5" : 
-                            selectedUsers.includes(user.id) ? "#e3f2fd" : 
-                            isBlocked ? "#fff9f9" : "inherit",
+                          backgroundColor: selectedUsers.includes(user.id) 
+                            ? "#e3f2fd" 
+                            : isBlocked 
+                              ? "#fff9f9" 
+                              : "inherit",
                           opacity: isBlocked ? 0.8 : 1
                         }}
                       >
@@ -325,7 +305,6 @@ function AdminPanel() {
                           <Checkbox
                             checked={selectedUsers.includes(user.id)}
                             onChange={() => handleSelect(user.id)}
-                            disabled={isCurrentUser}
                           />
                         </TableCell>
                         <TableCell>
@@ -374,17 +353,11 @@ function AdminPanel() {
                         </TableCell>
                         <TableCell>
                           <Tooltip
-                            title={
-                              lastSeen
-                                ? format(new Date(lastSeen), "yyyy-MM-dd HH:mm:ss")
-                                : "Never"
-                            }
+                            title={lastSeen ? format(new Date(lastSeen), "yyyy-MM-dd HH:mm:ss") : "Never"}
                           >
                             <span style={{ fontSize: "0.9em" }}>
                               {lastSeen
-                                ? formatDistanceToNow(new Date(lastSeen), {
-                                    addSuffix: true,
-                                  })
+                                ? formatDistanceToNow(new Date(lastSeen), { addSuffix: true })
                                 : "Never"}
                             </span>
                           </Tooltip>
@@ -399,23 +372,17 @@ function AdminPanel() {
         </>
       )}
 
-      {/* Snackbar for notifications */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={6000}
         onClose={handleCloseSnackbar}
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
       >
-        <Alert
-          onClose={handleCloseSnackbar}
-          severity={snackbar.severity}
-          sx={{ width: "100%" }}
-        >
+        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: "100%" }}>
           {snackbar.message}
         </Alert>
       </Snackbar>
 
-      {/* Confirmation Dialog */}
       <Dialog
         open={confirmDialog.open}
         onClose={() => setConfirmDialog({ ...confirmDialog, open: false })}
@@ -423,8 +390,13 @@ function AdminPanel() {
         <DialogTitle>{confirmDialog.title}</DialogTitle>
         <DialogContent>
           <p>{confirmDialog.message}</p>
-          {confirmDialog.action === "delete" && (
+          {confirmDialog.isSelfAction && (
             <Alert severity="warning" style={{ marginTop: "16px" }}>
+              You will lose access immediately after this action!
+            </Alert>
+          )}
+          {confirmDialog.action === "delete" && (
+            <Alert severity="error" style={{ marginTop: "16px" }}>
               This action cannot be undone!
             </Alert>
           )}
@@ -435,10 +407,13 @@ function AdminPanel() {
           </Button>
           <Button 
             onClick={handleConfirmAction} 
-            color={confirmDialog.action === "delete" ? "error" : "primary"}
+            color={
+              confirmDialog.action === "delete" ? "error" : 
+              confirmDialog.isSelfAction ? "warning" : "primary"
+            }
             variant="contained"
           >
-            Confirm
+            {confirmDialog.isSelfAction ? "I Understand" : "Confirm"}
           </Button>
         </DialogActions>
       </Dialog>
