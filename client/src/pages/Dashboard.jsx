@@ -45,79 +45,61 @@ function AdminPanel() {
   const navigate = useNavigate();
 
   // Obtener usuario actual desde la API
-     useEffect(() => {
-      const fetchUser = async () => {
-        try {
-          const response = await axios.get("/api/current-user");
-          setCurrentUser(response.data);
-        } catch (err) {
-          console.error("Error fetching current user:", err);
-        }
-      };
-        useEffect(() => {
-    const fetchCurrentUser = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        const response = await axios.get(
-          `${import.meta.env.VITE_API_URL}/api/auth/me`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        setCurrentUser(response.data);
-      } catch (err) {
-        console.error("Error fetching current user:", err);
-        if (err.response?.status === 401 || err.response?.status === 403) {
-          localStorage.removeItem("token");
-          navigate("/login");
-        }
+    useEffect(() => {
+  const fetchCurrentUser = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        navigate("/login");
+        return;
       }
-    };
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_URL}/api/auth/me`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setCurrentUser(response.data);
+    } catch (err) {
+      console.error("Error fetching current user:", err);
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        localStorage.removeItem("token");
+        navigate("/login");
+      }
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      setError("");
+      const token = localStorage.getItem("token");
+      if (!token) {
+        navigate("/login");
+        return;
+      }
+      const res = await axios.get(
+        `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/admin/users`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const usersData = Array.isArray(res.data) ? res.data : (res.data.users || []);
+      setUsers(usersData);
+    } catch (err) {
+      handleApiError(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   fetchCurrentUser();
-}, [navigate]);
+  fetchUsers();
 
-
-    const fetchUsers = async () => {
-      try {
-        setLoading(true);
-        setError("");
-        const token = localStorage.getItem("token");
-        if (!token) {
-          navigate("/login");
-          return;
-        }
-        const res = await axios.get(
-          `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/admin/users`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-
-         const usersData = Array.isArray(res.data) ? res.data : (res.data.users || []);
-        setUsers(usersData);
-      } catch (err) {
-        handleApiError(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
+  const pollingInterval = setInterval(() => {
     fetchCurrentUser();
     fetchUsers();
+  }, 30000);
 
-    const pollingInterval = setInterval(() => {
-      fetchCurrentUser();
-      fetchUsers();
-    }, 30000);
+  return () => clearInterval(pollingInterval);
+}, [navigate, lastUpdate]);
 
-    return () => clearInterval(pollingInterval);
-  }, [navigate, lastUpdate]);
-        setCurrentUser(response.data);
-      } catch (err) {
-        console.error("Error fetching current user:", err);
-      }
-    };
-
-    fetchCurrentUser();
-    fetchUsers();
-  }, [navigate]);
 
   const fetchUsers = async () => {
     try {
