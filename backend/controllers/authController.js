@@ -5,10 +5,16 @@ const jwt = require("jsonwebtoken");
 // Register user 
 async function register(req, res) {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, role = "user" } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({ error: "All fields required" });
+    }
+
+   
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: "Invalid email format" });
     }
 
     const [existing] = await db.query(
@@ -21,7 +27,7 @@ async function register(req, res) {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const role = "admin"; 
+
     await db.query(
       `INSERT INTO users (name, email, password, status, role) VALUES (?, ?, ?, 'active', ?)`,
       [name, email, hashedPassword, role]
@@ -44,6 +50,7 @@ async function login(req, res) {
     );
     const attempt = attemptRows[0];
     const now = new Date();
+
     if (attempt && attempt.blocked_until && new Date(attempt.blocked_until) > now) {
       return res.status(403).json({
         error: "Too many failed attempts. Try again later.",
@@ -59,8 +66,8 @@ async function login(req, res) {
     if (!isValid) {
       if (!attempt) {
         await db.query(
-          "INSERT INTO login_attempts (email, attempts) VALUES (?, ?)",
-          [email, 1]
+          "INSERT INTO login_attempts (email, attempts, last_attempt) VALUES (?, ?, ?)",
+          [email, 1, now]
         );
       } else {
         const newAttempts = attempt.attempts + 1;
@@ -71,13 +78,19 @@ async function login(req, res) {
           [newAttempts, now, blockedUntil, email]
         );
       }
+    
       return res.status(401).json({ error: "Invalid credentials." });
     }
 
+    // Login exitoso, borrar intentos previos
     await db.query("DELETE FROM login_attempts WHERE email = ?", [email]);
 
+    if (user.status === "blocked") {
+      return res.status(403).json({ error: "User is blocked" });
+    }
+
     const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
+      { id: user.id, email: user.email, role: user.role, tokenVersion: user.token_version || 0 },
       process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );
@@ -91,10 +104,19 @@ async function login(req, res) {
 // Block user 
 async function blockUser(req, res) {
   try {
+    // Validar que el que bloquea sea admin
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
     const targetUserId = parseInt(req.params.id);
 
+    if (targetUserId === req.user.id) {
+      return res.status(400).json({ message: "You can't block yourself" });
+    }
+
     const [result] = await db.query(
-      'UPDATE users SET status = "blocked" WHERE id = ?',
+      'UPDATE users SET status = "blocked", token_version = COALESCE(token_version, 0) + 1 WHERE id = ?',
       [targetUserId]
     );
 
@@ -102,18 +124,7 @@ async function blockUser(req, res) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Invalidate tokens by incrementing token_version (optional)
-    await db.query(
-      'UPDATE users SET token_version = COALESCE(token_version, 0) + 1 WHERE id = ?',
-      [targetUserId]
-    );
-
-    const message =
-      targetUserId === req.user.id
-        ? "You have blocked yourself. Contact an administrator to regain access."
-        : "User blocked successfully";
-
-    res.json({ message });
+    res.json({ message: "User blocked successfully" });
   } catch (err) {
     console.error("Error blocking user:", err);
     res.status(500).json({ message: "Server error" });
@@ -123,11 +134,14 @@ async function blockUser(req, res) {
 // Unblock user 
 async function unblockUser(req, res) {
   try {
-    const targetUserId = parseInt(req.params.id);
-    const requesterUserId = req.user.id;
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
 
-    if (targetUserId === requesterUserId) {
-      return res.status(403).json({ message: "You can't unblock yourself" });
+    const targetUserId = parseInt(req.params.id);
+
+    if (targetUserId === req.user.id) {
+      return res.status(400).json({ message: "You can't unblock yourself" });
     }
 
     const [result] = await db.query(
@@ -149,11 +163,14 @@ async function unblockUser(req, res) {
 // Delete user 
 async function deleteUser(req, res) {
   try {
-    const targetUserId = parseInt(req.params.id);
-    const requesterUserId = req.user.id;
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
 
-    if (targetUserId === requesterUserId) {
-      return res.status(403).json({ message: "You can't delete yourself" });
+    const targetUserId = parseInt(req.params.id);
+
+    if (targetUserId === req.user.id) {
+      return res.status(400).json({ message: "You can't delete yourself" });
     }
 
     const [result] = await db.query("DELETE FROM users WHERE id = ?", [
