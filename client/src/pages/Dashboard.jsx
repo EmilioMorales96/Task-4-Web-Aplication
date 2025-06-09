@@ -45,7 +45,7 @@ function AdminPanel() {
   const navigate = useNavigate();
 
   // Obtener usuario actual desde la API
-   useEffect(() => {
+  useEffect(() => {
   const fetchCurrentUser = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -66,10 +66,6 @@ function AdminPanel() {
       }
     }
   };
-
-  fetchCurrentUser();
-}, [navigate]);
-
 
   const fetchUsers = async () => {
     try {
@@ -93,16 +89,20 @@ function AdminPanel() {
     }
   };
 
+  // Ejecutar ambas funciones al montar o cuando cambian las dependencias
   fetchCurrentUser();
   fetchUsers();
 
+  // Crear intervalo para refrescar datos cada 30 segundos
   const pollingInterval = setInterval(() => {
     fetchCurrentUser();
     fetchUsers();
   }, 30000);
 
+  // Limpiar el intervalo cuando el componente se desmonte o cambie dependencias
   return () => clearInterval(pollingInterval);
 }, [navigate, lastUpdate]);
+
 
 
   const fetchUsers = async () => {
