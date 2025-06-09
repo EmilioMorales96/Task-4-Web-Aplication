@@ -21,8 +21,7 @@ async function register(req, res) {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const role = "admin"; // o 'user' según tu lógica
-
+    const role = "admin"; 
     await db.query(
       `INSERT INTO users (name, email, password, status, role) VALUES (?, ?, ?, 'active', ?)`,
       [name, email, hashedPassword, role]
@@ -89,12 +88,38 @@ async function login(req, res) {
   }
 }
 
-// Block user (cambiada para permitir auto-bloqueo)
+// Block user 
 async function blockUser(req, res) {
   try {
     const targetUserId = parseInt(req.params.id);
     
-    // ✅ Eliminada la validación de auto-bloqueo
+    const [result] = await db.query(
+      'UPDATE users SET status = "blocked" WHERE id = ?',
+      [targetUserId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Invalida tokens existentes 
+    await db.query(
+      'UPDATE users SET token_version = COALESCE(token_version, 0) + 1 WHERE id = ?',
+      [targetUserId]
+    );
+
+    res.json({ 
+      message: targetUserId === req.user.id 
+        ? "You have blocked yourself. You will be logged out." 
+        : "User blocked successfully"
+    });
+  } catch (err) {
+    console.error("Error blocking user:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+}
+    
+   
     const [result] = await db.query(
       'UPDATE users SET status = "blocked" WHERE id = ?',
       [targetUserId]
@@ -142,7 +167,7 @@ async function unblockUser(req, res) {
   }
 }
 
-// Delete user (sin cambios - sigue prohibiendo auto-eliminación por seguridad)
+// Delete user 
 async function deleteUser(req, res) {
   try {
     const targetUserId = parseInt(req.params.id);
