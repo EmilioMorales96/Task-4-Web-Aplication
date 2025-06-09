@@ -53,13 +53,15 @@ function AdminPanel() {
         navigate("/login");
         return;
       }
-      const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/api/auth/me`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setCurrentUser(response.data);
-    } catch (err) {
-      console.error("Error fetching current user:", err);
+      cconst response = await axios.get(
+          `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/auth/me`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setCurrentUser(response.data);
+      } catch (err) {
+        console.error("Error fetching current user:", err);
+      }
+    };
       if (err.response?.status === 401 || err.response?.status === 403) {
         localStorage.removeItem("token");
         navigate("/login");
