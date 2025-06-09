@@ -44,28 +44,41 @@ function AdminPanel() {
   const navigate = useNavigate();
 
   // Obtener usuario actual desde la API
-  useEffect(() => {
-    const fetchCurrentUser = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          navigate("/login");
-          return;
-        }
-        
-        const response = await axios.get(
-          `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/auth/me`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        setCurrentUser(response.data);
-      } catch (err) {
-        console.error("Error fetching current user:", err);
+ useEffect(() => {
+  const fetchCurrentUser = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        navigate("/login");
+        return;
       }
-    };
+      
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_URL}/api/auth/me`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setCurrentUser(response.data);
+    } catch (err) {
+      console.error("Error fetching current user:", err);
+      // Si hay error de autenticación, redirige a login
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        localStorage.removeItem("token");
+        navigate("/login");
+      }
+    }
+  };
 
     fetchCurrentUser();
     fetchUsers();
   }, [navigate]);
+
+   const pollingInterval = setInterval(() => {
+    fetchUsers();
+    fetchCurrentUser();
+  }, 30000);
+    return () => clearInterval(pollingInterval); 
+}, [navigate, lastUpdate]); 
+
 
   const fetchUsers = async () => {
     try {
@@ -118,10 +131,20 @@ function AdminPanel() {
     setSelectedUsers(e.target.checked ? users.map(u => u.id) : []);
   };
 
-  const handleSelect = (id) => {
+   const handleSelect = async (id) => {
+    const isActive = await checkUserStatus();
+    if (!isActive) return;
+    
     setSelectedUsers(prev =>
       prev.includes(id) ? prev.filter(uid => uid !== id) : [...prev, id]
     );
+  };
+  
+  const handleSelectAll = async (e) => {
+    const isActive = await checkUserStatus();
+    if (!isActive) return;
+    
+    setSelectedUsers(e.target.checked ? users.map(u => u.id) : []);
   };
 
   const showConfirmationDialog = (action) => {
@@ -152,16 +175,32 @@ function AdminPanel() {
     });
   };
 
-  const performAction = async (action) => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/admin/${action}`,
-        { ids: selectedUsers },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      showSnackbar(response.data.message || `${action} successful!`);
+    const performAction = async (action) => {
+      try {
+        const token = localStorage.getItem("token");
+        const response = await axios.post(
+          `${import.meta.env.VITE_API_URL}/api/admin/${action}`,
+          { ids: selectedUsers },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+    
+        showSnackbar(response.data.message || `${action} successful!`);
+        setLastUpdate(Date.now()); // Fuerza actualización
+        
+        if (confirmDialog.isSelfAction && action === "block") {
+          setTimeout(() => {
+            localStorage.removeItem("token");
+            navigate("/login");
+          }, 1500); 
+        } else {
+          fetchUsers(); 
+        }
+        
+        setSelectedUsers([]);
+      } catch (err) {
+        handleApiError(err);
+      }
+    };
       
       // Auto-logout if user blocked themselves
       if (confirmDialog.isSelfAction && action === "block") {
@@ -175,6 +214,26 @@ function AdminPanel() {
       setSelectedUsers([]);
     } catch (err) {
       handleApiError(err);
+    }
+  };
+  const checkUserStatus = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return false;
+      
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_URL}/api/auth/me`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      if (response.data.status === 'blocked') {
+        localStorage.removeItem("token");
+        navigate("/login", { state: { logoutReason: "Your account has been blocked" } });
+        return false;
+      }
+      return true;
+    } catch (err) {
+      return false;
     }
   };
 
