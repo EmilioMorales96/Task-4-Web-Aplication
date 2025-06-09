@@ -54,6 +54,10 @@ function AdminPanel() {
           console.error("Error fetching current user:", err);
         }
       };
+        useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const token = localStorage.getItem("token");
         const response = await axios.get(
           `${import.meta.env.VITE_API_URL}/api/auth/me`,
           { headers: { Authorization: `Bearer ${token}` } }
@@ -67,6 +71,10 @@ function AdminPanel() {
         }
       }
     };
+
+  fetchCurrentUser();
+}, [navigate]);
+
 
     const fetchUsers = async () => {
       try {
