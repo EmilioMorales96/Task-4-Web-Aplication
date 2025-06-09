@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const db = require("../config/db");
 
 // Verifica que el token sea válido y asigna los datos del usuario al request
 const verifyToken = (req, res, next) => {
