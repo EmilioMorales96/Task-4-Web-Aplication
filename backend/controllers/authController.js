@@ -2,7 +2,7 @@ const bcrypt = require("bcryptjs");
 const db = require("../config/db");
 const jwt = require("jsonwebtoken");
 
-// Register user
+// Register user 
 async function register(req, res) {
   try {
     const { name, email, password } = req.body;
@@ -89,16 +89,12 @@ async function login(req, res) {
   }
 }
 
-// Block user
+// Block user (cambiada para permitir auto-bloqueo)
 async function blockUser(req, res) {
   try {
     const targetUserId = parseInt(req.params.id);
-    const requesterUserId = req.user.id;
-
-    if (targetUserId === requesterUserId) {
-      return res.status(403).json({ message: "You can't block yourself" });
-    }
-
+    
+    // ✅ Eliminada la validación de auto-bloqueo
     const [result] = await db.query(
       'UPDATE users SET status = "blocked" WHERE id = ?',
       [targetUserId]
@@ -108,14 +104,19 @@ async function blockUser(req, res) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    res.json({ message: "User blocked successfully" });
+    // Mensaje diferente si es auto-bloqueo
+    const message = targetUserId === req.user.id 
+      ? "You have blocked yourself. Contact an administrator to regain access."
+      : "User blocked successfully";
+
+    res.json({ message });
   } catch (err) {
     console.error("Error blocking user:", err);
     res.status(500).json({ message: "Server error" });
   }
 }
 
-// Unblock user
+// Unblock user 
 async function unblockUser(req, res) {
   try {
     const targetUserId = parseInt(req.params.id);
@@ -141,7 +142,7 @@ async function unblockUser(req, res) {
   }
 }
 
-// Delete user
+// Delete user (sin cambios - sigue prohibiendo auto-eliminación por seguridad)
 async function deleteUser(req, res) {
   try {
     const targetUserId = parseInt(req.params.id);
