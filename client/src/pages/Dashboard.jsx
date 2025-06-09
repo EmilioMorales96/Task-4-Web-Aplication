@@ -1,13 +1,71 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
+import { formatDistanceToNow, format } from "date-fns";
+import {
+  Tooltip,
+  Checkbox,
+  Button,
+  TextField,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Snackbar,
+  Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions
+} from "@mui/material";
 import { useNavigate } from "react-router-dom";
 
-const AdminPanel = () => {
+function AdminPanel() {
   const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [selectedUsers, setSelectedUsers] = useState([]);
+  const [filter, setFilter] = useState("");
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [search, setSearch] = useState("");
+  const [currentUser, setCurrentUser] = useState(null);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success"
+  });
+  const [confirmDialog, setConfirmDialog] = useState({
+    open: false,
+    title: "",
+    message: "",
+    action: null,
+    isSelfAction: false
+  });
   const navigate = useNavigate();
+
+  // Obtener usuario actual desde la API
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          navigate("/login");
+          return;
+        }
+        
+        const response = await axios.get(
+          `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/auth/me`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setCurrentUser(response.data);
+      } catch (err) {
+        console.error("Error fetching current user:", err);
+      }
+    };
+
+    fetchCurrentUser();
+    fetchUsers();
+  }, [navigate]);
 
   const fetchUsers = async () => {
     try {
@@ -22,141 +80,345 @@ const AdminPanel = () => {
         `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/admin/users`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-
-      console.log("Users API response:", res.data); 
-
-      if (Array.isArray(res.data)) {
-        setUsers(res.data);
-      } else {
-        console.error("Unexpected response format:", res.data);
-        setUsers([]);
-      }
+      setUsers(res.data);
     } catch (err) {
       handleApiError(err);
-      setUsers([]); // fallback seguro
     } finally {
       setLoading(false);
     }
   };
 
   const handleApiError = (err) => {
-    if (err.response?.status === 401) {
-      navigate("/login");
+    if (err.response) {
+      if (err.response.status === 401) {
+        navigate("/login");
+      } else if (err.response.status === 403) {
+        navigate("/login", { state: { logoutReason: "You have been blocked by an administrator." } });
+      } else {
+        setError("Failed to fetch users.");
+        showSnackbar("Failed to fetch users", "error");
+        console.error("API Error:", err);
+      }
     } else {
-      setError("Error loading users");
+      setError("Network error occurred.");
+      showSnackbar("Network error occurred", "error");
+      console.error("Network Error:", err);
     }
   };
 
-  const updateUser = async (id, action) => {
+  const showSnackbar = (message, severity = "success") => {
+    setSnackbar({ open: true, message, severity });
+  };
+
+  const handleCloseSnackbar = () => {
+    setSnackbar({ ...snackbar, open: false });
+  };
+
+  const handleSelectAll = (e) => {
+    setSelectedUsers(e.target.checked ? users.map(u => u.id) : []);
+  };
+
+  const handleSelect = (id) => {
+    setSelectedUsers(prev =>
+      prev.includes(id) ? prev.filter(uid => uid !== id) : [...prev, id]
+    );
+  };
+
+  const showConfirmationDialog = (action) => {
+    const isSelfAction = selectedUsers.includes(currentUser?.id);
+    
+    const actions = {
+      block: {
+        title: isSelfAction ? "⚠️ Confirm Self-Block" : "Confirm Block",
+        message: isSelfAction
+          ? "You are about to BLOCK YOURSELF. This will immediately log you out. Continue?"
+          : `Block ${selectedUsers.length} user(s)?`
+      },
+      unblock: {
+        title: "Confirm Unblock",
+        message: `Unblock ${selectedUsers.length} user(s)?`
+      },
+      delete: {
+        title: "Confirm Deletion",
+        message: `Permanently delete ${selectedUsers.length} user(s)?`
+      }
+    };
+
+    setConfirmDialog({
+      open: true,
+      action,
+      isSelfAction,
+      ...actions[action]
+    });
+  };
+
+  const performAction = async (action) => {
     try {
       const token = localStorage.getItem("token");
-      await axios.patch(
-        `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/admin/users/${id}/${action}`,
-        {},
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/admin/${action}`,
+        { ids: selectedUsers },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      fetchUsers();
+
+      showSnackbar(response.data.message || `${action} successful!`);
+      
+      // Auto-logout if user blocked themselves
+      if (confirmDialog.isSelfAction && action === "block") {
+        showSnackbar("You have been blocked. Contact an administrator.", "warning");
+        localStorage.removeItem("token");
+        navigate("/login");
+      } else {
+        fetchUsers();
+      }
+      
+      setSelectedUsers([]);
     } catch (err) {
       handleApiError(err);
     }
   };
 
-  const deleteUser = async (id) => {
-    try {
-      const token = localStorage.getItem("token");
-      await axios.delete(
-        `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/admin/users/${id}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      fetchUsers();
-    } catch (err) {
-      handleApiError(err);
-    }
+  const handleConfirmAction = async () => {
+    setConfirmDialog({ ...confirmDialog, open: false });
+    await performAction(confirmDialog.action);
   };
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+  const filteredUsers = users.filter(
+    u => u.name?.toLowerCase().includes(filter.toLowerCase()) ||
+         u.email?.toLowerCase().includes(filter.toLowerCase())
+  );
 
-  const filteredUsers = Array.isArray(users)
-    ? users.filter(
-        (user) =>
-          user.username?.toLowerCase().includes(search.toLowerCase()) ||
-          user.email?.toLowerCase().includes(search.toLowerCase())
-      )
-    : [];
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    navigate("/login");
+  };
 
   return (
-    <div className="p-4">
-      <h2 className="text-2xl font-bold mb-4">Admin Panel</h2>
-      <input
-        type="text"
-        placeholder="Search by username or email"
-        className="mb-4 p-2 border w-full"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-      />
+    <div className="admin-panel" style={{ padding: 24 }}>
+      {/* Header */}
+      <div style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: 24,
+      }}>
+        <h2>Admin Dashboard</h2>
+        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          {currentUser && (
+            <span style={{ fontWeight: 500 }}>
+              Logged in as: {currentUser.name} ({currentUser.role})
+            </span>
+          )}
+          <Button variant="contained" color="error" onClick={handleLogout}>
+            Logout
+          </Button>
+        </div>
+      </div>
+
+      {error && <Alert severity="error" style={{ marginBottom: 16 }}>{error}</Alert>}
 
       {loading ? (
-        <p>Loading...</p>
-      ) : error ? (
-        <p className="text-red-500">{error}</p>
+        <p>Loading users...</p>
       ) : (
-        <table className="min-w-full bg-white border">
-          <thead>
-            <tr>
-              <th className="py-2 px-4 border">Username</th>
-              <th className="py-2 px-4 border">Email</th>
-              <th className="py-2 px-4 border">Status</th>
-              <th className="py-2 px-4 border">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {Array.isArray(filteredUsers) && filteredUsers.length ? (
-              filteredUsers.map((user) => (
-                <tr key={user.id}>
-                  <td className="py-2 px-4 border">{user.username}</td>
-                  <td className="py-2 px-4 border">{user.email}</td>
-                  <td className="py-2 px-4 border">
-                    {user.blocked ? "Blocked" : "Active"}
-                  </td>
-                  <td className="py-2 px-4 border space-x-2">
-                    {user.blocked ? (
-                      <button
-                        className="bg-green-500 text-white px-2 py-1 rounded"
-                        onClick={() => updateUser(user.id, "unblock")}
+        <>
+          <div style={{
+            display: "flex",
+            justifyContent: "space-between",
+            marginBottom: 16,
+          }}>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <Button
+                variant="contained"
+                color="error"
+                onClick={() => showConfirmationDialog("block")}
+                disabled={!selectedUsers.length}
+              >
+                🔒 Block
+              </Button>
+              <Button
+                variant="contained"
+                color="success"
+                onClick={() => showConfirmationDialog("unblock")}
+                disabled={!selectedUsers.length}
+              >
+                🔓 Unblock
+              </Button>
+              <Button
+                variant="outlined"
+                color="error"
+                onClick={() => showConfirmationDialog("delete")}
+                disabled={!selectedUsers.length || selectedUsers.includes(currentUser?.id)}
+              >
+                🗑 Delete
+              </Button>
+            </div>
+            <TextField
+              label="Filter users"
+              variant="outlined"
+              size="small"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              style={{ width: "250px" }}
+            />
+          </div>
+
+          <div className="dashboard-table-responsive">
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell padding="checkbox">
+                      <Checkbox
+                        checked={selectedUsers.length === users.length && users.length > 0}
+                        indeterminate={selectedUsers.length > 0 && selectedUsers.length < users.length}
+                        onChange={handleSelectAll}
+                      />
+                    </TableCell>
+                    <TableCell>Name</TableCell>
+                    <TableCell>Email</TableCell>
+                    <TableCell>Role</TableCell>
+                    <TableCell>Status</TableCell>
+                    <TableCell>Last seen</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {filteredUsers.map((user) => {
+                    const isBlocked = user.status === "blocked";
+                    const lastSeen = user.last_login;
+                    const isCurrentUser = user.id === currentUser?.id;
+                    
+                    return (
+                      <TableRow
+                        key={user.id}
+                        hover
+                        selected={selectedUsers.includes(user.id)}
+                        style={{
+                          backgroundColor: selectedUsers.includes(user.id) 
+                            ? "#e3f2fd" 
+                            : isBlocked 
+                              ? "#fff9f9" 
+                              : "inherit",
+                          opacity: isBlocked ? 0.8 : 1
+                        }}
                       >
-                        Unblock
-                      </button>
-                    ) : (
-                      <button
-                        className="bg-yellow-500 text-white px-2 py-1 rounded"
-                        onClick={() => updateUser(user.id, "block")}
-                      >
-                        Block
-                      </button>
-                    )}
-                    <button
-                      className="bg-red-500 text-white px-2 py-1 rounded"
-                      onClick={() => deleteUser(user.id)}
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td className="py-2 px-4 border text-center" colSpan="4">
-                  No users found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+                        <TableCell padding="checkbox">
+                          <Checkbox
+                            checked={selectedUsers.includes(user.id)}
+                            onChange={() => handleSelect(user.id)}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <div style={{ 
+                            fontWeight: 600,
+                            color: isBlocked ? "#888" : "inherit",
+                            textDecoration: isBlocked ? "line-through" : "none"
+                          }}>
+                            {user.name}
+                            {isCurrentUser && (
+                              <span style={{ 
+                                marginLeft: "8px",
+                                fontSize: "0.8em",
+                                color: "#3f51b5",
+                                fontWeight: "normal"
+                              }}>
+                                (You)
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>{user.email}</TableCell>
+                        <TableCell>
+                          <span style={{
+                            padding: "4px 8px",
+                            borderRadius: "4px",
+                            backgroundColor: user.role === "admin" ? "#e3f2fd" : "#f1f1f1",
+                            color: user.role === "admin" ? "#1976d2" : "#555",
+                            fontSize: "0.8em",
+                            fontWeight: 500
+                          }}>
+                            {user.role}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <span style={{
+                            padding: "4px 8px",
+                            borderRadius: "4px",
+                            backgroundColor: isBlocked ? "#ffebee" : "#e8f5e9",
+                            color: isBlocked ? "#c62828" : "#2e7d32",
+                            fontSize: "0.8em",
+                            fontWeight: 500
+                          }}>
+                            {user.status}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <Tooltip
+                            title={lastSeen ? format(new Date(lastSeen), "yyyy-MM-dd HH:mm:ss") : "Never"}
+                          >
+                            <span style={{ fontSize: "0.9em" }}>
+                              {lastSeen
+                                ? formatDistanceToNow(new Date(lastSeen), { addSuffix: true })
+                                : "Never"}
+                            </span>
+                          </Tooltip>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </div>
+        </>
       )}
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      >
+        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: "100%" }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+
+      <Dialog
+        open={confirmDialog.open}
+        onClose={() => setConfirmDialog({ ...confirmDialog, open: false })}
+      >
+        <DialogTitle>{confirmDialog.title}</DialogTitle>
+        <DialogContent>
+          <p>{confirmDialog.message}</p>
+          {confirmDialog.isSelfAction && (
+            <Alert severity="warning" style={{ marginTop: "16px" }}>
+              You will lose access immediately after this action!
+            </Alert>
+          )}
+          {confirmDialog.action === "delete" && (
+            <Alert severity="error" style={{ marginTop: "16px" }}>
+              This action cannot be undone!
+            </Alert>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmDialog({ ...confirmDialog, open: false })}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleConfirmAction} 
+            color={
+              confirmDialog.action === "delete" ? "error" : 
+              confirmDialog.isSelfAction ? "warning" : "primary"
+            }
+            variant="contained"
+          >
+            {confirmDialog.isSelfAction ? "I Understand" : "Confirm"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
-};
+}
 
 export default AdminPanel;
