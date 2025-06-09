@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { formatDistanceToNow, format } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import {
   Tooltip,
   Checkbox,
@@ -41,6 +41,7 @@ function AdminPanel() {
     action: null,
     isSelfAction: false
   });
+  const [lastUpdate, setLastUpdate] = useState(Date.now());
   const navigate = useNavigate();
 
   // Obtener usuario actual desde la API
@@ -52,11 +53,53 @@ function AdminPanel() {
           navigate("/login");
           return;
         }
-        
         const response = await axios.get(
-          `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/auth/me`,
+          `${import.meta.env.VITE_API_URL}/api/auth/me`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
+        setCurrentUser(response.data);
+      } catch (err) {
+        console.error("Error fetching current user:", err);
+        if (err.response?.status === 401 || err.response?.status === 403) {
+          localStorage.removeItem("token");
+          navigate("/login");
+        }
+      }
+    };
+
+    const fetchUsers = async () => {
+      try {
+        setLoading(true);
+        setError("");
+        const token = localStorage.getItem("token");
+        if (!token) {
+          navigate("/login");
+          return;
+        }
+        const res = await axios.get(
+          `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/admin/users`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+         const usersData = Array.isArray(res.data) ? res.data : (res.data.users || []);
+        setUsers(usersData);
+      } catch (err) {
+        handleApiError(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCurrentUser();
+    fetchUsers();
+
+    const pollingInterval = setInterval(() => {
+      fetchCurrentUser();
+      fetchUsers();
+    }, 30000);
+
+    return () => clearInterval(pollingInterval);
+  }, [navigate, lastUpdate]);
         setCurrentUser(response.data);
       } catch (err) {
         console.error("Error fetching current user:", err);
