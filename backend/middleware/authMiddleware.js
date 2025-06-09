@@ -2,18 +2,20 @@ const jwt = require('jsonwebtoken');
 
 // Verifica que el token sea válido y asigna los datos del usuario al request
 const verifyToken = (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1]; // Espera formato: Bearer <token>
+  const token = req.headers.authorization?.split(' ')[1];
+  
+  jwt.verify(token, process.env.JWT_SECRET, async (err, decoded) => {
+    if (err) return res.status(403).json({ message: "Invalid token" });
 
-  if (!token) {
-    return res.status(401).json({ message: "No token provided" });
-  }
-
-  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-    if (err) {
-      return res.status(403).json({ message: "Invalid token" });
+    const [user] = await db.query(
+      'SELECT token_version FROM users WHERE id = ?',
+      [decoded.id]
+    );
+    
+    if (!user.length || user[0].token_version !== (decoded.tokenVersion || 0)) {
+      return res.status(403).json({ message: "Token revoked" });
     }
 
-    console.log("🛡️ JWT Decoded:", decoded); // Verifica qué hay dentro del token
     req.user = decoded;
     next();
   });
