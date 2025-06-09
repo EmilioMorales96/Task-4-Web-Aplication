@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const db = require('../config/db');
 const authController = require('../controllers/authController');
-const { verifyToken, isAdmin, preventSelfAction } = require('../middleware/authMiddleware');
+const { verifyToken, isAdmin, preventSelfUnlockOrAdminActions } = require('../middleware/authMiddleware');
 const { blockIfUserBlocked } = require('../middleware/statusMiddleware');
 
 // REGISTER 
@@ -17,14 +17,32 @@ router.get('/verify', verifyToken, (req, res) => {
 });
 
 // BLOQUEAR USUARIO
-router.post('/block/:id', verifyToken, preventSelfAction, authController.blockUser);
+router.post(
+  '/block/:id',
+  verifyToken,
+  isAdmin,
+  preventSelfUnlockOrAdminActions,
+  authController.blockUser
+);
 
 // DESBLOQUEAR USUARIO
-router.post("/unblock/:id", verifyToken, blockIfUserBlocked, preventSelfAction, authController.unblockUser);
+router.post(
+  '/unblock/:id',
+  verifyToken,
+  isAdmin,
+  preventSelfUnlockOrAdminActions,
+  blockIfUserBlocked,
+  authController.unblockUser
+);
 
 // ELIMINAR USUARIO
-router.delete('/delete/:id', verifyToken, preventSelfAction, authController.deleteUser);
-
+router.delete(
+  '/delete/:id',
+  verifyToken,
+  isAdmin,
+  preventSelfUnlockOrAdminActions,
+  authController.deleteUser
+);
 
 router.get('/me', verifyToken, async (req, res) => {
   try {
@@ -50,5 +68,5 @@ router.get('/me', verifyToken, async (req, res) => {
   }
 });
 
-
 module.exports = router;
+
