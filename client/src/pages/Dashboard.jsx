@@ -45,14 +45,15 @@ function AdminPanel() {
   const navigate = useNavigate();
 
   // Obtener usuario actual desde la API
-  useEffect(() => {
-    const fetchCurrentUser = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          navigate("/login");
-          return;
+     useEffect(() => {
+      const fetchUser = async () => {
+        try {
+          const response = await axios.get("/api/current-user");
+          setCurrentUser(response.data);
+        } catch (err) {
+          console.error("Error fetching current user:", err);
         }
+      };
         const response = await axios.get(
           `${import.meta.env.VITE_API_URL}/api/auth/me`,
           { headers: { Authorization: `Bearer ${token}` } }
