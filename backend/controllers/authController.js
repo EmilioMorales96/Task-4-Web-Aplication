@@ -92,7 +92,7 @@ async function login(req, res) {
 async function blockUser(req, res) {
   try {
     const targetUserId = parseInt(req.params.id);
-    
+
     const [result] = await db.query(
       'UPDATE users SET status = "blocked" WHERE id = ?',
       [targetUserId]
@@ -102,37 +102,16 @@ async function blockUser(req, res) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Invalida tokens existentes 
+    // Invalidate tokens by incrementing token_version (optional)
     await db.query(
       'UPDATE users SET token_version = COALESCE(token_version, 0) + 1 WHERE id = ?',
       [targetUserId]
     );
 
-    res.json({ 
-      message: targetUserId === req.user.id 
-        ? "You have blocked yourself. You will be logged out." 
-        : "User blocked successfully"
-    });
-  } catch (err) {
-    console.error("Error blocking user:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-}
-    
-   
-    const [result] = await db.query(
-      'UPDATE users SET status = "blocked" WHERE id = ?',
-      [targetUserId]
-    );
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    // Mensaje diferente si es auto-bloqueo
-    const message = targetUserId === req.user.id 
-      ? "You have blocked yourself. Contact an administrator to regain access."
-      : "User blocked successfully";
+    const message =
+      targetUserId === req.user.id
+        ? "You have blocked yourself. Contact an administrator to regain access."
+        : "User blocked successfully";
 
     res.json({ message });
   } catch (err) {
