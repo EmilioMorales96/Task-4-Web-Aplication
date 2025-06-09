@@ -20,17 +20,7 @@ function Login() {
     }
   }, []);
 
-  const token = jwt.sign(
-  { 
-    id: user.id, 
-    email: user.email, 
-    role: user.role,
-    tokenVersion: user.token_version || 0
-  },
-  process.env.JWT_SECRET,
-  { expiresIn: "1h" }
-);
-
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
     setStatus("");
