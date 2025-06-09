@@ -45,7 +45,7 @@ function AdminPanel() {
   const navigate = useNavigate();
 
   // Obtener usuario actual desde la API
-    useEffect(() => {
+   useEffect(() => {
   const fetchCurrentUser = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -53,21 +53,23 @@ function AdminPanel() {
         navigate("/login");
         return;
       }
-     const response = await axios.get(
-      `${import.meta.env.VITE_API_URL || "https://task-4-web-aplication.onrender.com"}/api/auth/me`,
+      const response = await axios.get(
+        `${import.meta.env.VITE_API_URL || "https://task-4-web-aplication.onrender.com"}/api/auth/me`,
         { headers: { Authorization: `Bearer ${token}` } }
-     );
-        setCurrentUser(response.data);
-      } catch (err) {
-        console.error("Error fetching current user:", err);
-      }
-    };
+      );
+      setCurrentUser(response.data);
+    } catch (err) {
+      console.error("Error fetching current user:", err);
       if (err.response?.status === 401 || err.response?.status === 403) {
         localStorage.removeItem("token");
         navigate("/login");
       }
     }
   };
+
+  fetchCurrentUser();
+}, [navigate]);
+
 
   const fetchUsers = async () => {
     try {
