@@ -60,10 +60,42 @@ const roleCheck = (roles) => {
   };
 };
 
+/**
+ * Middleware para controlar acciones que el usuario puede hacer sobre sí mismo:
+ * - Permite bloquearse a sí mismo (action="block")
+ * - No permite desbloquearse a sí mismo ni otras acciones administrativas sobre sí mismo
+ * 
+ * Asume que en el cuerpo de la petición (req.body.action) se envía la acción que se intenta hacer.
+ */
+const preventSelfUnlockOrAdminActions = (req, res, next) => {
+  if (!req.user || !req.params.id) {
+    return res.status(400).json({ message: "Missing user information" });
+  }
+
+  const isSameUser = String(req.user.id) === String(req.params.id);
+
+  if (isSameUser) {
+    const action = req.body.action?.toLowerCase();
+
+    if (action === "unlock") {
+      return res.status(403).json({ message: "You cannot unlock yourself" });
+    }
+
+    // Si la acción es distinta de "block" (bloquear), o no está definida,
+    // bloqueamos la acción para evitar que haga otras acciones administrativas sobre sí mismo
+    if (action && action !== "block") {
+      return res.status(403).json({ message: "You cannot perform this action on yourself" });
+    }
+    // Si es "block", permitimos pasar
+  }
+
+  next();
+};
 
 module.exports = {
   verifyToken,
   isAdmin,
   roleCheck,
-  preventSelfAction,
+  preventSelfUnlockOrAdminActions,
 };
+
