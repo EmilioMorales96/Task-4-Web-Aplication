@@ -53,10 +53,10 @@ function AdminPanel() {
         navigate("/login");
         return;
       }
-      cconst response = await axios.get(
-          `${import.meta.env.VITE_API_URL || "https://task-4-web-aplication.onrender.com"}/api/auth/me`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+     const response = await axios.get(
+      `${import.meta.env.VITE_API_URL || "https://task-4-web-aplication.onrender.com"}/api/auth/me`,
+        { headers: { Authorization: `Bearer ${token}` } }
+     );
         setCurrentUser(response.data);
       } catch (err) {
         console.error("Error fetching current user:", err);
