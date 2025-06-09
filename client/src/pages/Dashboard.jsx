@@ -54,7 +54,7 @@ function AdminPanel() {
         return;
       }
       cconst response = await axios.get(
-          `${import.meta.env.VITE_API_URL || "https://task-4-web-aplication-1.onrender.com"}/api/auth/me`,
+          `${import.meta.env.VITE_API_URL || "https://task-4-web-aplication.onrender.com"}/api/auth/me`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         setCurrentUser(response.data);
